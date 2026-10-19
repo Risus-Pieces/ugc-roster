@@ -1,26 +1,205 @@
 @import "tailwindcss";
 
+/* Cozy farm.
+   grass: the world around everything · wood: sidebar + frames · paper/panel: parchment board and cards
+   ink: dark-brown text · tally (pumpkin on sunflower): needs attention · profit/loss: crops vs radish, money only */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --grass: #5a9a48;
+  --grass-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' shape-rendering='crispEdges'%3E%3Crect width='32' height='32' fill='%235a9a48'/%3E%3Cpath fill='%234a8540' d='M3 5h2v2H3zM19 3h2v2h-2zM11 13h2v2h-2zM27 11h2v2h-2zM7 23h2v2H7zM23 21h2v2h-2zM15 29h2v2h-2z'/%3E%3Cpath fill='%2370b456' d='M5 5h2v2H5zM21 3h2v2h-2zM29 11h2v2h-2zM9 23h2v2H9zM25 21h2v2h-2zM13 13h2v2h-2z'/%3E%3C/svg%3E");
+  --wood: #8a5a2c;
+  --wood-dark: #5c3a1e;
+  --wood-light: #b07a42;
+  --on-wood: #fff0c8;
+  --on-wood-2: #e9cc9b;
+  --paper: #eac98e;
+  --panel: #f6e2b6;
+  --field: #fbefd2;
+  --sunken: #e5c287;
+  --line: #c99a5b;
+  --line-strong: #6b4423;
+  --ink: #3b2414;
+  --ink-2: #6b4423;
+  --muted: #86602f;
+  --gold: #f2be3b;
+  --tally: #a84a0c;
+  --tally-soft: #f8d66d;
+  --profit: #2e6b27;
+  --profit-soft: #c5e3a0;
+  --loss: #a8361f;
+  --loss-soft: #f5bfa6;
+  --info: #2d5e8c;
+  --info-soft: #bfddf0;
+  --crop: #4e8a3a;
 }
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
+/* Night on the farm */
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --grass: #1f4a30;
+    --grass-tex: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' shape-rendering='crispEdges'%3E%3Crect width='32' height='32' fill='%231f4a30'/%3E%3Cpath fill='%231a3f29' d='M3 5h2v2H3zM19 3h2v2h-2zM11 13h2v2h-2zM27 11h2v2h-2zM7 23h2v2H7zM23 21h2v2h-2zM15 29h2v2h-2z'/%3E%3Cpath fill='%23f7e6c0' fill-opacity='.35' d='M29 11h1v1h-1zM9 23h1v1H9zM21 3h1v1h-1z'/%3E%3C/svg%3E");
+    --wood: #4a3018;
+    --wood-dark: #2b1b0c;
+    --wood-light: #6b4724;
+    --on-wood: #f7e6c0;
+    --on-wood-2: #cdb184;
+    --paper: #2b2115;
+    --panel: #3a2c1c;
+    --field: #46352a;
+    --sunken: #33271a;
+    --line: #5a4329;
+    --line-strong: #a07a48;
+    --ink: #f7e6c0;
+    --ink-2: #d9bf8e;
+    --muted: #a88a5f;
+    --gold: #f2be3b;
+    --tally: #f5a54a;
+    --tally-soft: #4a3010;
+    --profit: #8fd16e;
+    --profit-soft: #24401c;
+    --loss: #f0866a;
+    --loss-soft: #4a1e14;
+    --info: #8cc4f0;
+    --info-soft: #1b3448;
+    --crop: #5fa046;
   }
 }
 
+@theme inline {
+  --color-grass: var(--grass);
+  --color-wood: var(--wood);
+  --color-wood-dark: var(--wood-dark);
+  --color-wood-light: var(--wood-light);
+  --color-on-wood: var(--on-wood);
+  --color-on-wood-2: var(--on-wood-2);
+  --color-paper: var(--paper);
+  --color-panel: var(--panel);
+  --color-field: var(--field);
+  --color-sunken: var(--sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-2: var(--ink-2);
+  --color-muted: var(--muted);
+  --color-gold: var(--gold);
+  --color-tally: var(--tally);
+  --color-tally-soft: var(--tally-soft);
+  --color-profit: var(--profit);
+  --color-profit-soft: var(--profit-soft);
+  --color-loss: var(--loss);
+  --color-loss-soft: var(--loss-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-crop: var(--crop);
+  --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+  --font-display: var(--font-display-face), var(--font-body), sans-serif;
+  --font-mono: var(--font-data), ui-monospace, monospace;
+  /* Pixel world: no rounded corners (rounded-full stays for dots). */
+  --radius-xs: 0;
+  --radius-sm: 0;
+  --radius-md: 0;
+  --radius-lg: 0;
+  --radius-xl: 0;
+  --radius-2xl: 0;
+}
+
+html {
+  font-size: 14px;
+  background: var(--grass);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--grass) var(--grass-tex) repeat;
+  background-size: 32px 32px;
+  color: var(--ink);
+  font-family: var(--font-sans);
+}
+
+/* Numbers in the pixel face. VT323 runs small, so it's scaled up relative to its context. */
+.num {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 1.28em;
+  line-height: 1;
+  letter-spacing: 0.01em;
+}
+
+/* Pixel frame: four offset shadows leave the corners empty, which reads as a stepped corner. */
+.rounded-lg.border:not(.border-dashed),
+.px-frame {
+  border-color: transparent;
+  box-shadow:
+    0 -2px 0 0 var(--line-strong),
+    0 2px 0 0 var(--line-strong),
+    -2px 0 0 0 var(--line-strong),
+    2px 0 0 0 var(--line-strong),
+    0 6px 0 -2px rgb(59 36 20 / 0.28);
+}
+
+/* The parchment board inside a wooden frame — every page sits on one. */
+.board {
+  background: var(--paper);
+  box-shadow:
+    inset 0 0 0 4px var(--wood),
+    inset 0 0 0 6px var(--wood-dark),
+    0 -3px 0 0 var(--wood-dark),
+    0 3px 0 0 var(--wood-dark),
+    -3px 0 0 0 var(--wood-dark),
+    3px 0 0 0 var(--wood-dark),
+    0 10px 0 -3px rgb(20 40 15 / 0.35);
+}
+
+/* Wooden planks */
+.planks {
+  background: repeating-linear-gradient(180deg, var(--wood) 0 34px, var(--wood-dark) 34px 36px);
+}
+
+.pixelated {
+  image-rendering: pixelated;
+  shape-rendering: crispEdges;
+}
+
+/* Chunky press for pixel buttons */
+.px-btn {
+  box-shadow: inset 0 -3px 0 0 rgb(59 36 20 / 0.28);
+}
+.px-btn:active:not(:disabled) {
+  transform: translateY(1px);
+  box-shadow: inset 0 -1px 0 0 rgb(59 36 20 / 0.28);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--crop);
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--ink);
+}
+
+:focus-visible {
+  outline: 2px dashed var(--info);
+  outline-offset: 2px;
+}
+
+@keyframes bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+}
+.bob {
+  animation: bob 0.9s steps(2, end) infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }
