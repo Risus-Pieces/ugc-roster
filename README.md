@@ -10,6 +10,8 @@ pnpm dev               # http://localhost:3000
 pnpm test              # engine unit tests
 ```
 
+**Signing in.** The ops console is behind a team password (`ADMIN_PASSWORD`). After `vercel env pull` it's in `.env.local`; change it any time in Vercel → Settings → Environment Variables (changing it signs everyone out). The creator portal, referral sign-up, tracking links, survey API, webhooks and crons stay public. Crons check `CRON_SECRET` themselves.
+
 The database is **Neon Postgres**, provisioned through the Vercel Marketplace, so its connection strings live in the Vercel project. Schema and data commands:
 
 ```bash

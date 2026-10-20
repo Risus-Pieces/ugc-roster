@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cx } from "./ui";
 import { Sprite, STEP_SPRITES } from "./sprites";
+import { signOut } from "@/app/login/actions";
 
 // The creator lifecycle is a real sequence, so the groups are numbered.
 export const NAV = [
@@ -75,6 +76,11 @@ function NavList({ path, counts }: { path: string; counts?: Record<string, numbe
             Settings & integrations
           </span>
         </Link>
+        <form action={signOut}>
+          <button type="submit" className="mt-1 w-full px-2 py-1 text-left text-[12px] font-bold text-on-wood-2 hover:text-on-wood">
+            Sign out
+          </button>
+        </form>
       </div>
     </nav>
   );
