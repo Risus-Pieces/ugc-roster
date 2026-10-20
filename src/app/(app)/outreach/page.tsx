@@ -362,7 +362,7 @@ async function ComposeTab({ pick }: { pick: number }) {
                         {s ? compact(s.medianViews) : "—"}
                       </Td>
                       <Td right mono>
-                        {s ? compact(s.worst5AvgViews) : "—"}
+                        {s && s.sampleSize > 0 ? compact(s.worst5AvgViews) : "—"}
                       </Td>
                       <Td>
                         <Authenticity score={s} />

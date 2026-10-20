@@ -34,6 +34,8 @@ export const creators = pgTable(
     emailNormalized: text("email_normalized"),
     country: text("country"),
     niche: text("niche"),
+    /** Where the creator came from: "YouTube discovery", "Modash", "Spreadsheet", "Referral", … */
+    source: text("source"),
     stage: text("stage", { enum: STAGES }).notNull().default("prospect"),
     tier: text("tier"),
     rateCardId: text("rate_card_id"),

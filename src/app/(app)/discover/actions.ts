@@ -5,6 +5,8 @@ import { redirect } from "next/navigation";
 import type { ActionResult } from "@/components/client";
 import { PLATFORMS, type Platform } from "@/db";
 import { createCampaign, runDiscovery, type DiscoveryRun } from "@/lib/services/discovery";
+import { planImport, runImport, type ImportPlan } from "@/lib/services/importer";
+import type { ImportPlatform } from "@/lib/engines/csv-import";
 
 const fail = (e: unknown): ActionResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
 
@@ -88,4 +90,52 @@ export async function createLookalikeCampaignAction(_: ActionResult, fd: FormDat
   }
   revalidatePath("/discover");
   redirect(`/discover?campaign=${id}`);
+}
+
+export type ImportSummary = {
+  ok: boolean;
+  message: string;
+  mode?: "preview" | "import";
+  created?: number;
+  plan?: Omit<ImportPlan, "ready"> & { readyCount: number; sample: ImportPlan["ready"] };
+} | null;
+
+const MAX_BYTES = 5 * 1024 * 1024;
+
+export async function importCreatorsAction(_: ImportSummary, fd: FormData): Promise<ImportSummary> {
+  try {
+    const mode = String(fd.get("intent")) === "import" ? "import" : "preview";
+    const file = fd.get("file");
+    let csv = String(fd.get("csv") ?? "");
+    if (file instanceof File && file.size > 0) {
+      if (file.size > MAX_BYTES) return { ok: false, message: "That file is over 5 MB. Split it into smaller exports." };
+      csv = await file.text();
+    }
+    if (!csv.trim()) return { ok: false, message: "Choose a CSV file or paste the rows first." };
+    const platform = String(fd.get("platform") ?? "");
+    const opts = {
+      campaignId: String(fd.get("campaignId") ?? ""),
+      source: String(fd.get("source") ?? "Spreadsheet").slice(0, 40) || "Spreadsheet",
+      defaultPlatform: (["tiktok", "instagram", "youtube"].includes(platform) ? platform : null) as ImportPlatform | null,
+      onlyInBand: fd.get("onlyInBand") === "on",
+    };
+    const shape = (plan: ImportPlan) => {
+      const { ready, ...rest } = plan;
+      return { ...rest, readyCount: ready.length, sample: ready.slice(0, 8) };
+    };
+    if (mode === "preview") {
+      const plan = await planImport(csv, opts);
+      return {
+        ok: true,
+        mode,
+        plan: shape(plan),
+        message: plan.ready.length ? `${plan.ready.length} new creators ready to import (${plan.withEmail} with an email). Nothing has been saved yet.` : "No new creators to import — see the reasons below.",
+      };
+    }
+    const r = await runImport(csv, opts);
+    revalidatePath("/", "layout");
+    return { ok: r.created > 0, mode, created: r.created, plan: shape(r.plan), message: r.created ? `Imported ${r.created} creators into the campaign. Go to Outreach → Compose to write openers.` : "Nothing was imported — see the reasons below." };
+  } catch (e) {
+    return { ok: false, message: e instanceof Error ? e.message : String(e) };
+  }
 }

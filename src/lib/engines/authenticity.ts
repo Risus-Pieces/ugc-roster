@@ -142,3 +142,50 @@ export function assessAuthenticity({ followers, posts }: AuthenticityInput): Aut
     engagementRate: round(engagementRate, 4),
   };
 }
+
+/**
+ * Audience check from summary numbers only (what creator-database exports provide): average views
+ * vs followers, engagement rate, and the tool's own fake-follower estimate when present. Less
+ * reliable than the per-post check, so it never returns a full "pass" score.
+ */
+export function assessFromAggregates(p: { followers: number | null; avgViews: number | null; engagementRate: number | null; fakeFollowersPct: number | null }): AuthenticityResult {
+  const flags: string[] = ["Scored from imported averages, not individual posts"];
+  let score = 90;
+  const ratio = p.followers && p.avgViews ? p.avgViews / p.followers : null;
+  if (ratio !== null) {
+    if (ratio < 0.03) {
+      score -= 30;
+      flags.push(`Average views are only ${(ratio * 100).toFixed(1)}% of followers — followers may be bought or inactive`);
+    } else if (ratio < 0.08) {
+      score -= 12;
+      flags.push(`Low views-to-followers (${(ratio * 100).toFixed(1)}%)`);
+    }
+  } else flags.push("No average views in the import — can't compare views to followers");
+  if (p.engagementRate !== null) {
+    if (p.engagementRate < 0.01) {
+      score -= 20;
+      flags.push(`Very low engagement (${(p.engagementRate * 100).toFixed(2)}%)`);
+    } else if (p.engagementRate > 0.3) {
+      score -= 15;
+      flags.push(`Unusually high engagement (${(p.engagementRate * 100).toFixed(1)}%)`);
+    }
+  }
+  if (p.fakeFollowersPct !== null) {
+    if (p.fakeFollowersPct > 0.3) {
+      score -= 30;
+      flags.push(`The source tool estimates ${Math.round(p.fakeFollowersPct * 100)}% fake followers`);
+    } else if (p.fakeFollowersPct > 0.15) {
+      score -= 12;
+      flags.push(`The source tool estimates ${Math.round(p.fakeFollowersPct * 100)}% fake followers`);
+    }
+  }
+  score = clamp(Math.round(score), 0, 100);
+  return {
+    score,
+    verdict: score >= 75 ? "pass" : score >= 50 ? "review" : "fail",
+    flags,
+    commentQuality: 0,
+    viewFollowerRatio: ratio !== null ? round(ratio, 3) : 0,
+    engagementRate: p.engagementRate ?? 0,
+  };
+}

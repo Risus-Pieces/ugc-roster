@@ -368,3 +368,36 @@ describe("outreach rules", () => {
     expect(followUpStatus([out(0), out(30)], sched, new Date(t0.getTime() + 35 * 86_400_000)).due).toBe(true);
   });
 });
+
+
+import { parseCsv, mapColumns, parseCount, parseRate, fromProfileUrl, normalizeRows } from "./csv-import";
+import { assessFromAggregates } from "./authenticity";
+
+describe("csv import", () => {
+  it("parses quotes, embedded commas and newlines, and semicolons", () => {
+    expect(parseCsv('a,b\n"x, y","line1\nline2"\n')).toEqual([["a", "b"], ["x, y", "line1\nline2"]]);
+    expect(parseCsv("\uFEFFa;b\n1;2")).toEqual([["a", "b"], ["1", "2"]]);
+  });
+  it("maps common export headers", () => {
+    const m = mapColumns(["Username", "Full name", "Followers", "Engagement Rate", "Avg. Views", "Email", "Profile URL", "Country"]);
+    expect(m).toMatchObject({ handle: 0, name: 1, followers: 2, engagementRate: 3, avgViews: 4, email: 5, url: 6, country: 7 });
+  });
+  it("cleans numbers and handles", () => {
+    expect(parseCount("12.5K")).toBe(12500);
+    expect(parseCount("1,234")).toBe(1234);
+    expect(parseRate("4.5%")).toBeCloseTo(0.045);
+    expect(parseRate("0.045")).toBeCloseTo(0.045);
+    expect(fromProfileUrl("https://www.tiktok.com/@Spicy.Sam?lang=en")).toEqual({ platform: "tiktok", handle: "spicy.sam" });
+    expect(fromProfileUrl("instagram.com/hotsauce_hank/")).toEqual({ platform: "instagram", handle: "hotsauce_hank" });
+    expect(fromProfileUrl("https://instagram.com/p/abc123").handle).toBeNull();
+  });
+  it("normalizes rows with platform from URL or default", () => {
+    const { rows } = normalizeRows(parseCsv("Username,Followers,Email,Link\n@SpicySam,8.2K,collabs: sam@gmail.com,https://tiktok.com/@spicysam\nhank,15000,,"), "instagram");
+    expect(rows[0]).toMatchObject({ handle: "spicysam", platform: "tiktok", followers: 8200, email: "sam@gmail.com" });
+    expect(rows[1]).toMatchObject({ handle: "hank", platform: "instagram", followers: 15000, email: null });
+  });
+  it("scores from aggregates", () => {
+    expect(assessFromAggregates({ followers: 10000, avgViews: 4000, engagementRate: 0.06, fakeFollowersPct: 0.05 }).verdict).toBe("pass");
+    expect(assessFromAggregates({ followers: 18000, avgViews: 300, engagementRate: 0.004, fakeFollowersPct: 0.4 }).verdict).toBe("fail");
+  });
+});

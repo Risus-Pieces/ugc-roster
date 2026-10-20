@@ -11,6 +11,8 @@ import { compact, pct, usd } from "@/lib/format";
 import { createCampaignAction, createLookalikeCampaignAction } from "./actions";
 import { RunDiscovery } from "./run-discovery";
 import { Authenticity, EmailCell, Handles, groupBy, kfmt, many, one, viralDependence, type SearchParams } from "../creators/bits";
+import { campaignOptions } from "@/lib/services/importer";
+import { ImportForm } from "./import-form";
 
 export const metadata = { title: "Discover" };
 
@@ -22,7 +24,8 @@ const NOT_KEYWORDS = new Set(["com", "co", "net", "org", "gmail", "outlook", "ic
 export default async function DiscoverPage({ searchParams }: { searchParams: SearchParams }) {
   await connection();
   const sp = await searchParams;
-  const tab = one(sp.tab) === "lookalikes" ? "lookalikes" : "campaigns";
+  const t = one(sp.tab);
+  const tab = t === "lookalikes" || t === "import" ? t : "campaigns";
   return (
     <>
       <PageHeader step="01 · Find" title="Discover" description="We judge creators on typical views: the median of recent posts and their 5 worst videos — not their one viral hit." />
@@ -31,9 +34,10 @@ export default async function DiscoverPage({ searchParams }: { searchParams: Sea
         tabs={[
           { key: "campaigns", label: "Campaigns", href: "/discover" },
           { key: "lookalikes", label: "Find more like my top 10", href: "/discover?tab=lookalikes" },
+          { key: "import", label: "Import CSV", href: "/discover?tab=import" },
         ]}
       />
-      {tab === "campaigns" ? <CampaignsTab sp={sp} /> : <LookalikesTab sp={sp} />}
+      {tab === "campaigns" ? <CampaignsTab sp={sp} /> : tab === "import" ? <ImportTab /> : <LookalikesTab sp={sp} />}
     </>
   );
 }
@@ -51,6 +55,29 @@ const SORTS = {
   base: { label: "Base / video" },
 } as const;
 type SortKey = keyof typeof SORTS;
+
+async function ImportTab() {
+  const options = await campaignOptions();
+  if (!options.length) return <Empty title="Create a campaign first">Imported creators are added to a campaign, so its follower range and niche apply.</Empty>;
+  return (
+    <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_320px]">
+      <Card title="Import creators from a CSV">
+        <ImportForm campaigns={options} />
+      </Card>
+      <Card title="Where to get a list">
+        <div className="space-y-3 text-[13px] text-ink-2">
+          <p>
+            Export from a creator database during its free trial: <b>Modash</b> (14 days), <b>Influencers.club</b>, <b>SocialCat</b> (7 days), <b>Heepsy</b> or <b>Tokfluence</b>. Filter to TikTok or Instagram, 2K–20K followers, your niche, and the US.
+          </p>
+          <p>A spreadsheet from your team works too. It needs a username or profile link column; followers, email, average views and engagement rate make the scoring better.</p>
+          <p>
+            Duplicates are skipped, by handle and by email. Imported creators are scored from the export&apos;s averages, and suggested pay uses half their average views as the floor until real posts are scored.
+          </p>
+        </div>
+      </Card>
+    </div>
+  );
+}
 
 async function CampaignsTab({ sp }: { sp: SP }) {
   const [all, links, emails] = await Promise.all([
@@ -289,7 +316,7 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
                   {s ? compact(s.medianViews) : "—"}
                 </Td>
                 <Td right mono>
-                  {s ? compact(s.worst5AvgViews) : "—"}
+                  {s && s.sampleSize > 0 ? compact(s.worst5AvgViews) : "—"}
                 </Td>
                 <Td right mono>
                   {s ? (

@@ -400,7 +400,7 @@ function ScoreBlock({ s }: { s: CreatorScore }) {
   const dep = viralDependence(s);
   const items: { label: string; value: React.ReactNode; hint?: string; strong?: boolean }[] = [
     { label: "Median views", value: compact(s.medianViews), strong: true },
-    { label: "Worst 5 avg", value: compact(s.worst5AvgViews), strong: true },
+    { label: "Worst 5 avg", value: s.sampleSize > 0 ? compact(s.worst5AvgViews) : "—", strong: true },
     { label: "Max views", value: compact(s.maxViews), hint: `${dep.toFixed(1)}× median` },
     { label: "Engagement", value: pct(s.engagementRate) },
     { label: "Views / followers", value: pct(s.viewFollowerRatio, 0) },
@@ -413,7 +413,7 @@ function ScoreBlock({ s }: { s: CreatorScore }) {
         <PlatformTag platform={s.platform} />
         <VerdictBadge verdict={s.authenticityVerdict} score={s.authenticityScore} />
         <span className="num text-[12px] text-muted">
-          {s.sampleSize} posts · scored {relative(s.computedAt)}
+          {s.sampleSize > 0 ? `${s.sampleSize} posts` : "From imported averages"} · scored {relative(s.computedAt)}
         </span>
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 xl:grid-cols-7">
