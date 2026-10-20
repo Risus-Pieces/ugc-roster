@@ -14,6 +14,7 @@ import { connectedProviders } from "@/lib/integrations/platforms";
 import { day } from "@/lib/format";
 import { saveBrandAction, saveOpsAction, importGooglePlayAction } from "./actions";
 import { publicOrigin } from "./origin";
+import { CheckConnections } from "./check-connections";
 
 export const metadata = { title: "Settings & integrations" };
 
@@ -242,6 +243,10 @@ async function Integrations() {
       <Notice tone="info">
         {liveCount} of {rows.length} connected. Anything not connected runs in demo or simulated mode so the whole app still works. Add keys as environment variables and redeploy; values are never shown here, only whether they&apos;re set.
       </Notice>
+
+      <Card title="Check that your keys work">
+        <CheckConnections />
+      </Card>
 
       <Card title="Integration status" flush>
         <div className="overflow-x-auto">

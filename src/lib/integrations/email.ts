@@ -1,4 +1,5 @@
 import "server-only";
+import { isReservedAddress } from "@/lib/engines/contact";
 
 export type SendResult = { status: "sent" | "simulated" | "failed"; providerMessageId?: string; error?: string };
 
@@ -6,13 +7,16 @@ export function emailLive() {
   return Boolean(process.env.RESEND_API_KEY && process.env.EMAIL_FROM);
 }
 
+
 /**
  * Sends through Resend when RESEND_API_KEY and EMAIL_FROM are set (use a dedicated outreach
  * domain with SPF/DKIM/DMARC so cold email doesn't hurt your main domain). Otherwise the
  * message is recorded as "simulated" so the pipeline still works locally.
  */
+
 export async function sendEmail(p: { to: string; subject: string; text: string; replyTo?: string; headers?: Record<string, string> }): Promise<SendResult> {
-  if (!emailLive()) return { status: "simulated" };
+  // Demo creators use reserved addresses; never hand those to the provider.
+  if (!emailLive() || isReservedAddress(p.to)) return { status: "simulated" };
   try {
     const res = await fetch("https://api.resend.com/emails", {
       method: "POST",

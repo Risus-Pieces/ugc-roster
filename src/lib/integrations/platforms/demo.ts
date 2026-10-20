@@ -107,9 +107,10 @@ function demoCreator(platform: Platform, keyword: string, i: number, opts: Searc
   const ratio = bot ? 0.012 : r.logNormal(0.45, 0.6);
   const er = bot ? 0.006 : r.logNormal(0.065, 0.35);
   const emailStyle = r.next();
-  const domain = r.pick(["gmail.com", "gmail.com", "outlook.com", "icloud.com"]);
+  // Demo creators are fictional: only reserved example domains (RFC 2606), so nobody real can ever be emailed.
+  const domain = r.pick(["example.com", "example.net", "example.org"]);
   const email =
-    emailStyle < 0.45 ? `📩 ${handle.replace(/\./g, "")}@${domain}` : emailStyle < 0.65 ? `collabs: ${first.toLowerCase()} [at] ${domain.replace(".", " [dot] ")}` : emailStyle < 0.75 ? `business: ${first.toLowerCase()}@${handle.replace(/[._]/g, "")}.co` : "";
+    emailStyle < 0.45 ? `📩 ${handle.replace(/\./g, "")}@${domain}` : emailStyle < 0.65 ? `collabs: ${first.toLowerCase()} [at] ${domain.replace(".", " [dot] ")}` : emailStyle < 0.75 ? `business: ${first.toLowerCase()}@${handle.replace(/[._]/g, "")}.example.com` : "";
   const bio = `${r.pick(["🥗", "🍳", "💪", "🌱"])} ${keyword} + real food | ${r.pick(["NYC", "London", "Austin", "Toronto", "Sydney", "LA"])} ${email ? "| " + email : ""}`.trim();
   return {
     platform,

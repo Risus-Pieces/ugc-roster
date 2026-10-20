@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import type { ActionResult } from "@/components/client";
 import { getOps, saveBrand, saveOps, type Brand, type Ops } from "@/lib/settings";
 import { importGooglePlayCsv } from "@/lib/integrations/revenue";
+import { checkIntegrations, type Check } from "@/lib/integrations/health";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const lines = (fd: FormData, k: string) =>
@@ -125,4 +126,8 @@ export async function importGooglePlayAction(_: ActionResult, fd: FormData): Pro
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }
+}
+
+export async function checkConnectionsAction(): Promise<{ checks: Check[] }> {
+  return { checks: await checkIntegrations() };
 }

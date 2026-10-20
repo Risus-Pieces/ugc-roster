@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { typicalViews, suggestedBaseCents } from "./creator-score";
 import { assessAuthenticity, commentQuality } from "./authenticity";
-import { extractEmails, normalizeEmail } from "./contact";
+import { extractEmails, normalizeEmail, isReservedAddress } from "./contact";
 import { rankLookalikes } from "./lookalike";
 import { classifyReply } from "./reply-classifier";
 import { runComplianceChecks, claimedExperienceDays, overallStatus } from "./compliance";
@@ -75,6 +75,12 @@ describe("contact", () => {
   it("extracts plain and obfuscated emails, business first", () => {
     expect(extractEmails("💌 jane.doe [at] gmail [dot] com | collabs: collab@janedoe.co")).toEqual(["collab@janedoe.co", "jane.doe@gmail.com"]);
     expect(extractEmails("no email here")).toEqual([]);
+  });
+  it("recognises reserved demo addresses", () => {
+    expect(isReservedAddress("maya.1a2b3c@example.com")).toBe(true);
+    expect(isReservedAddress("collab@mayaeats.example.com")).toBe(true);
+    expect(isReservedAddress("maya@gmail.com")).toBe(false);
+    expect(isReservedAddress("hi@examples.com")).toBe(false);
   });
   it("normalizes for dedupe", () => {
     expect(normalizeEmail("Jane.Doe+ugc@GoogleMail.com")).toBe("janedoe@gmail.com");

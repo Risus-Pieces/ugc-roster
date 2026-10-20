@@ -42,3 +42,6 @@ export function normalizeEmail(email: string | null | undefined): string | null 
 export function normalizeHandle(handle: string) {
   return handle.trim().replace(/^@/, "").toLowerCase();
 }
+
+/** Reserved, undeliverable domains (RFC 2606 / RFC 6761). Demo creators use these so nobody real is emailed. */
+export const isReservedAddress = (email: string) => /@([a-z0-9-]+\.)*(example\.(com|net|org)|test|invalid|localhost)$/i.test(email.trim());
