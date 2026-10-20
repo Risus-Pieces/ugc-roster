@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import type { ActionResult } from "@/components/client";
 import { db, messages } from "@/db";
-import { bookCall, discardDraft, draftOpener, recordReply, sendDraftReply, sendMessage } from "@/lib/services/outreach";
+import { bookCall, discardDraft, draftFollowUps, draftOpener, recordReply, sendDraftReply, sendMessage } from "@/lib/services/outreach";
 
 const fail = (e: unknown): ActionResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
@@ -134,6 +134,18 @@ export async function draftsAction(_: ActionResult, fd: FormData): Promise<Actio
       return { ok: sent > 0, message: `${sent} sent${lastStatus === "simulated" ? " (simulated — email not configured)" : ""}${errors.length ? ` · ${errors.length} failed: ${errors[0]}` : ""}` };
     }
     return { ok: false, message: "Nothing to do" };
+  } catch (e) {
+    return fail(e);
+  }
+}
+
+export async function draftFollowUpsAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
+  try {
+    const ids = fd.getAll("creatorId").map(String).filter(Boolean);
+    const r = await draftFollowUps(ids.length ? ids : undefined);
+    revalidatePath("/outreach");
+    if (!r.drafted) return { ok: false, message: "No follow-ups are due." };
+    return { ok: true, message: `${r.drafted} follow-up${r.drafted === 1 ? "" : "s"} drafted${r.source === "template" ? " from templates" : " by Claude"} · review and send them in Compose` };
   } catch (e) {
     return fail(e);
   }

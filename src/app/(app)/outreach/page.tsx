@@ -4,24 +4,24 @@ import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { db, calls, campaigns, creatorAccounts, creators, messages } from "@/db";
 import { Card, Empty, Field, Grid, Notice, PageHeader, StageBadge, Stat, Table, Tabs, Td, btn, btnSm, cx, input, label } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/client";
-import { outreachMode } from "@/lib/services/outreach";
+import { coldEmailsSentToday, followUpsDue, outreachMode } from "@/lib/services/outreach";
 import { latestScores } from "@/lib/services/common";
-import { getBrand } from "@/lib/settings";
+import { getBrand, getOps } from "@/lib/settings";
 import { compact, dateTime, day, pct, relative } from "@/lib/format";
-import { bookCallAction, draftsAction, logReplyAction, sendReplyAction, writeOpenersAction } from "./actions";
+import { bookCallAction, draftFollowUpsAction, draftsAction, logReplyAction, sendReplyAction, writeOpenersAction } from "./actions";
 import { TopMessageForm } from "./top-message-form";
 import { TzInput } from "./tz-input";
 import { Authenticity, ClassBadge, Handles, MsgStatusBadge, groupBy, one, requestTime, type SearchParams } from "../creators/bits";
 
 export const metadata = { title: "Outreach" };
 
-type Tab = "replies" | "compose" | "sent";
+type Tab = "replies" | "followups" | "compose" | "sent";
 
 export default async function OutreachPage({ searchParams }: { searchParams: SearchParams }) {
   await connection();
   const sp = await searchParams;
   const t = one(sp.tab);
-  const tab: Tab = t === "compose" || t === "sent" ? t : "replies";
+  const tab: Tab = t === "compose" || t === "sent" || t === "followups" ? t : "replies";
   const mode = outreachMode();
 
   const [waiting, drafts, outbound, inboundCreators] = await Promise.all([
@@ -35,7 +35,12 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
   ]);
   const contacted = new Set(outbound.map((r) => r.creatorId));
   const replied = inboundCreators.filter((r) => contacted.has(r.creatorId)).length;
-  const sentCount = await db.$count(messages, and(eq(messages.direction, "out"), inArray(messages.status, ["sent", "simulated", "failed"])));
+  const [sentCount, due, sentToday, ops] = await Promise.all([
+    db.$count(messages, and(eq(messages.direction, "out"), inArray(messages.status, ["sent", "simulated", "failed"]))),
+    followUpsDue(),
+    coldEmailsSentToday(),
+    getOps(),
+  ]);
 
   return (
     <>
@@ -65,13 +70,67 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
         active={tab}
         tabs={[
           { key: "replies", label: "Replies", href: "/outreach", count: waiting },
+          { key: "followups", label: "Follow-ups", href: "/outreach?tab=followups", count: due.length },
           { key: "compose", label: "Compose", href: "/outreach?tab=compose", count: drafts },
           { key: "sent", label: "Sent", href: "/outreach?tab=sent", count: sentCount },
         ]}
       />
 
-      {tab === "replies" ? <RepliesTab /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} /> : <SentTab />}
+      {tab === "compose" && (
+        <p className="mb-3 text-[13px] text-ink-2">
+          <span className="num">
+            {sentToday}/{ops.outreach.dailySendLimit}
+          </span>{" "}
+          cold emails sent today. Every opener and follow-up gets a footer with your mailing address and an opt-out line, and creators who said no are never emailed again.
+        </p>
+      )}
+      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} /> : <SentTab />}
     </>
+  );
+}
+
+// ─── Follow-ups ─────────────────────────────────────────────────────────────
+
+function FollowUpsTab({ due, days }: { due: Awaited<ReturnType<typeof followUpsDue>>; days: number[] }) {
+  if (!days.length) return <Empty title="Follow-ups are off">Set follow-up days in Settings → Outreach to nudge creators who haven&apos;t replied.</Empty>;
+  if (!due.length)
+    return (
+      <Empty title="No follow-ups due">
+        Creators who haven&apos;t replied get a follow-up on day {days.join(" and day ")} after the first email. They&apos;ll show up here when it&apos;s time.
+      </Empty>
+    );
+  return (
+    <Card title={`${due.length} due`} flush>
+      <ActionForm action={draftFollowUpsAction}>
+        <Table head={["", "Creator", "Follow-up", { label: "Days since first email", align: "right" }, "Subject"]}>
+          {due.map((d) => (
+            <tr key={d.creator.id}>
+              <Td>
+                <input type="checkbox" name="creatorId" value={d.creator.id} defaultChecked aria-label={`Follow up with ${d.creator.name}`} />
+              </Td>
+              <Td>
+                <Link href={`/creators/${d.creator.id}`} className="font-bold hover:underline">
+                  {d.creator.name}
+                </Link>
+              </Td>
+              <Td mono>
+                {d.step} of {d.of}
+              </Td>
+              <Td right mono>
+                {d.daysSinceFirst}
+              </Td>
+              <Td className="max-w-[280px] truncate text-ink-2">{d.subject}</Td>
+            </tr>
+          ))}
+        </Table>
+        <div className="flex items-center gap-3 border-t-2 border-line px-4 py-3">
+          <SubmitButton variant="primary" pendingText="Writing…">
+            Write follow-ups
+          </SubmitButton>
+          <span className="text-[12px] text-muted">Drafts go to Compose so you can read them before they send.</span>
+        </div>
+      </ActionForm>
+    </Card>
   );
 }
 

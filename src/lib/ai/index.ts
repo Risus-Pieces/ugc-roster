@@ -91,6 +91,28 @@ ${p.brand.senderName.split(" ")[0]}`,
   );
 }
 
+// ─── Follow-ups ─────────────────────────────────────────────────────────────
+
+export async function writeFollowUp(p: { brand: Brand; creatorName: string; step: number; originalBody: string; baseCents: number; cpmCents: number }) {
+  const first = p.creatorName.split(" ")[0];
+  const sig = p.brand.senderName.split(" ")[0];
+  return withFallback(
+    () =>
+      structured({
+        system: `You write short follow-ups to unanswered creator outreach from ${p.brand.senderName} at ${p.brand.name}.
+Rules: under 50 words, plain text, no subject line. Don't repeat the first email or guilt-trip ("just bumping this", "did you see my email"). Add one new, concrete reason to reply — follow-up 1: how simple the first video is (they film one short video from a brief, we review it, they post); follow-up 2: a polite last note that makes it easy to say no. Restate pay in one short clause. End with a yes/no question. Sign with "${sig}".`,
+        prompt: `Creator: ${p.creatorName}\nFollow-up number: ${p.step}\nPay: ${usd(p.baseCents)} per video + ${usd(p.cpmCents)} per 1,000 views\nFirst email:\n"""${p.originalBody}"""`,
+        schema: z.object({ body: z.string() }),
+      }),
+    () => ({
+      body:
+        p.step === 1
+          ? `Hi ${first}, quick follow-up on this. It's one short video from a brief: you film it, we give a quick review, you post. ${usd(p.baseCents)} per video plus ${usd(p.cpmCents)} per 1,000 views. Want me to send a sample brief?\n\n${sig}`
+          : `Hi ${first}, last note from me. If paid videos for ${p.brand.name} aren't a fit right now, no worries at all. If they are, reply "yes" and I'll send the brief.\n\n${sig}`,
+    }),
+  );
+}
+
 // ─── Reply triage ───────────────────────────────────────────────────────────
 
 export async function triageReply(p: { brand: Brand; creatorName: string; reply: string; baseCents: number; cpmCents: number }) {

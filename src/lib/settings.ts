@@ -11,6 +11,8 @@ export type Brand = {
   bookingUrl: string;
   senderName: string;
   senderEmail: string;
+  /** Postal address for the cold-email footer (CAN-SPAM). */
+  mailingAddress: string;
   allowedClaims: string[];
   bannedClaims: string[];
   disclosure: string;
@@ -24,6 +26,12 @@ export type Ops = {
   testFormats: string[];
   decisionMinPosts: number;
   surveyOptions: string[]; // non-creator answers in the in-app survey
+  outreach: {
+    /** Max cold emails (openers + follow-ups) per day; protects a new sending domain. */
+    dailySendLimit: number;
+    /** Follow-ups sent this many days after the first email, while there's no reply. */
+    followUpDays: number[];
+  };
   arpuOverrideCents?: number;
 };
 
@@ -32,9 +40,10 @@ export const DEFAULT_BRAND: Brand = {
   product: "Snapcal",
   valueProp: "an app that counts calories from a photo of your meal",
   appUrl: "https://example.com/app",
-  bookingUrl: "https://cal.com/your-team/creator-intro",
+  bookingUrl: "https://calendly.com/risuszhao",
   senderName: "Alex Rivera",
   senderEmail: "alex@example.com",
+  mailingAddress: "",
   allowedClaims: [
     "Estimates calories and macros from a photo",
     "Logging a meal takes a few seconds",
@@ -54,6 +63,7 @@ export const DEFAULT_OPS: Ops = {
   testFormats: ["Street interview", "Tier list", "Duet / stitch reaction", "Expectation vs reality", "Silent tutorial with captions"],
   decisionMinPosts: 20,
   surveyOptions: ["TikTok (no specific creator)", "Instagram", "YouTube", "App Store search", "Friend or family", "Other"],
+  outreach: { dailySendLimit: 40, followUpDays: [4, 9] },
 };
 
 async function getSetting<T>(key: string, fallback: T): Promise<T> {

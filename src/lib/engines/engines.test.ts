@@ -327,3 +327,38 @@ describe("onboarding", () => {
     expect(needs1099({ country: "US", totalCents: 70_000, tpsoCents: 0, year: 2025 }).required).toBe(true);
   });
 });
+
+import { complianceFooter, withFooter, doNotContact, followUpStatus, type MessageLite } from "./outreach";
+
+describe("outreach rules", () => {
+  const t0 = new Date("2026-10-01T15:00:00Z");
+  const out = (daysAfter: number, status = "sent"): MessageLite => ({ direction: "out", status, subject: "Paid video collab", body: "Hi", createdAt: new Date(t0.getTime() + daysAfter * 86_400_000), sentAt: new Date(t0.getTime() + daysAfter * 86_400_000) });
+
+  it("adds the footer once, with address and opt-out", () => {
+    const f = complianceFooter({ senderName: "Alex", brandName: "Snapcal", mailingAddress: "1 Main St, Austin TX" });
+    expect(f).toContain("1 Main St");
+    expect(f).toContain("no thanks");
+    expect(withFooter(withFooter("Hello", f), f).split("no thanks").length).toBe(2);
+  });
+
+  it("blocks creators who opted out, said no, or were cut", () => {
+    expect(doNotContact("contacted", [{ direction: "in", status: "received", body: "please unsubscribe me", createdAt: t0 }])).toMatch(/asked/);
+    expect(doNotContact("replied", [{ direction: "in", status: "handled", classification: "not_interested", createdAt: t0 }])).toMatch(/not interested/);
+    expect(doNotContact("cut", [])).toMatch(/cut/);
+    expect(doNotContact("contacted", [out(0)])).toBeNull();
+  });
+
+  it("schedules follow-ups on day 4 and 9, stopping on reply", () => {
+    const sched = [4, 9];
+    expect(followUpStatus([out(0)], sched, new Date(t0.getTime() + 3 * 86_400_000)).due).toBe(false);
+    const due1 = followUpStatus([out(0)], sched, new Date(t0.getTime() + 4 * 86_400_000));
+    expect(due1).toMatchObject({ due: true, step: 1, subject: "Re: Paid video collab" });
+    expect(followUpStatus([out(0), out(4)], sched, new Date(t0.getTime() + 9 * 86_400_000))).toMatchObject({ due: true, step: 2 });
+    expect(followUpStatus([out(0), out(4), out(9)], sched, new Date(t0.getTime() + 20 * 86_400_000)).due).toBe(false);
+    expect(followUpStatus([out(0), { direction: "in", status: "received", createdAt: t0 }], sched, new Date(t0.getTime() + 5 * 86_400_000)).due).toBe(false);
+    expect(followUpStatus([out(0), out(5, "draft")], sched, new Date(t0.getTime() + 6 * 86_400_000)).due).toBe(false);
+    // A late first follow-up (day 30) pushes the second one 5 days after it, not immediately.
+    expect(followUpStatus([out(0), out(30)], sched, new Date(t0.getTime() + 31 * 86_400_000)).due).toBe(false);
+    expect(followUpStatus([out(0), out(30)], sched, new Date(t0.getTime() + 35 * 86_400_000)).due).toBe(true);
+  });
+});

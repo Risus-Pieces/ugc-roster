@@ -1,3 +1,4 @@
+import { createHmac } from "node:crypto";
 import { ingestReply } from "@/lib/services/outreach";
 import { safeEqual, unauthorized, badRequest } from "../../_lib/auth";
 
@@ -5,14 +6,23 @@ type Parsed = { from: string; subject?: string; text: string };
 
 /**
  * Inbound creator replies. Accepts:
+ * - Resend receiving: the `email.received` webhook carries metadata only, so the body is fetched from
+ *   GET /emails/receiving/{email_id}. Signed with Svix; verified when RESEND_WEBHOOK_SECRET is set.
  * - JSON { from, subject, text }
- * - Resend inbound ({ type: "email.received", data: { from, subject, text, html } })
  * - Postmark ({ From, Subject, TextBody }) and form posts (SendGrid / Mailgun: from, subject, text / body-plain)
- * When INBOUND_EMAIL_SECRET is set, send it as `x-webhook-secret`, `Authorization: Bearer …`, or `?secret=`.
+ * For non-Resend senders, set INBOUND_EMAIL_SECRET and send it as `x-webhook-secret`, `Authorization: Bearer …`, or `?secret=`.
  */
 export async function POST(req: Request) {
+  const raw = await req.text();
+  const svixId = req.headers.get("svix-id");
+  const resendSecret = process.env.RESEND_WEBHOOK_SECRET?.trim();
+  if (svixId && resendSecret) {
+    if (!verifySvix(resendSecret, svixId, req.headers.get("svix-timestamp"), req.headers.get("svix-signature"), raw)) return unauthorized("Svix signature doesn't match RESEND_WEBHOOK_SECRET.");
+  } else if (resendSecret && !process.env.INBOUND_EMAIL_SECRET) {
+    return unauthorized("Expected a signed Resend webhook.");
+  }
   const secret = process.env.INBOUND_EMAIL_SECRET?.trim();
-  if (secret) {
+  if (secret && !(svixId && resendSecret)) {
     const url = new URL(req.url);
     const given = req.headers.get("x-webhook-secret") ?? req.headers.get("authorization")?.replace(/^Bearer\s+/i, "") ?? url.searchParams.get("secret") ?? "";
     if (!safeEqual(given, secret)) return unauthorized("Send INBOUND_EMAIL_SECRET as the x-webhook-secret header.");
@@ -20,9 +30,10 @@ export async function POST(req: Request) {
 
   let msg: Parsed | null;
   try {
-    msg = await parse(req);
-  } catch {
-    return badRequest("Couldn't read the body. Send JSON { from, subject, text }.");
+    msg = await parse(raw, req.headers.get("content-type") ?? "");
+  } catch (e) {
+    const why = e instanceof Error && /RESEND|Resend/.test(e.message) ? e.message : "Couldn't read the body. Send JSON { from, subject, text }.";
+    return badRequest(why);
   }
   if (!msg?.from || !msg.text.trim()) return badRequest("Missing from or text.");
 
@@ -36,17 +47,20 @@ export async function POST(req: Request) {
   }
 }
 
-async function parse(req: Request): Promise<Parsed | null> {
-  const type = req.headers.get("content-type") ?? "";
+async function parse(raw: string, type: string): Promise<Parsed | null> {
   if (type.includes("application/json")) {
-    const j = await req.json();
+    const j = JSON.parse(raw);
     const d = j?.data && typeof j.data === "object" ? j.data : j; // Resend wraps the email in `data`
+    if (j?.type === "email.received" && d.email_id && !d.text && !d.html) {
+      const full = await fetchResendReceived(String(d.email_id));
+      return { from: addr(full.from ?? d.from), subject: full.subject ?? d.subject ?? undefined, text: full.text ?? (full.html ? htmlToText(full.html) : "") };
+    }
     const from = addr(d.from ?? d.From ?? d.sender);
     const text = String(d.text ?? d.TextBody ?? d.plain ?? d["stripped-text"] ?? (d.html ? htmlToText(String(d.html)) : d.HtmlBody ? htmlToText(String(d.HtmlBody)) : ""));
     return { from, subject: d.subject ?? d.Subject ?? undefined, text };
   }
   if (type.includes("form")) {
-    const f = await req.formData();
+    const f = new URLSearchParams(raw);
     const g = (k: string) => (typeof f.get(k) === "string" ? (f.get(k) as string) : "");
     const text = g("stripped-text") || g("text") || g("body-plain") || htmlToText(g("html") || g("body-html"));
     return { from: g("from") || g("sender"), subject: g("subject") || undefined, text };
@@ -88,4 +102,21 @@ function stripQuoted(text: string) {
   }
   const s = out.join("\n").trim();
   return s || text.trim();
+}
+
+/** Resend's webhook omits the body; fetch it with the API key. */
+async function fetchResendReceived(id: string): Promise<{ from?: string; subject?: string; text?: string | null; html?: string | null }> {
+  if (!process.env.RESEND_API_KEY) throw new Error("RESEND_API_KEY is needed to read received emails");
+  const res = await fetch(`https://api.resend.com/emails/receiving/${encodeURIComponent(id)}`, { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } });
+  if (!res.ok) throw new Error(`Resend receiving API ${res.status}`);
+  return res.json();
+}
+
+/** Svix signature: base64 HMAC-SHA256 of "id.timestamp.body" with the whsec_ secret; rejects stale timestamps. */
+function verifySvix(secret: string, id: string, timestamp: string | null, signatures: string | null, body: string) {
+  if (!timestamp || !signatures) return false;
+  if (Math.abs(Date.now() / 1000 - Number(timestamp)) > 5 * 60) return false;
+  const key = Buffer.from(secret.replace(/^whsec_/, ""), "base64");
+  const expected = createHmac("sha256", key).update(`${id}.${timestamp}.${body}`).digest("base64");
+  return signatures.split(" ").some((s) => safeEqual(s.replace(/^v1,/, ""), expected));
 }

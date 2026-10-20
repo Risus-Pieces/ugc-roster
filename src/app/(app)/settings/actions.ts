@@ -39,6 +39,7 @@ export async function saveBrandAction(_: ActionResult, fd: FormData): Promise<Ac
       bookingUrl: str(fd, "bookingUrl"),
       senderName: str(fd, "senderName"),
       senderEmail: str(fd, "senderEmail"),
+      mailingAddress: str(fd, "mailingAddress"),
       allowedClaims: lines(fd, "allowedClaims"),
       bannedClaims: lines(fd, "bannedClaims"),
       disclosure: str(fd, "disclosure"),
@@ -70,9 +71,17 @@ export async function saveOpsAction(_: ActionResult, fd: FormData): Promise<Acti
     const o: Ops = {
       ...current,
       breakout: {
+        ...current.breakout,
         minViews: num(fd, "minViews"),
         minEngagementRate: num(fd, "minEr") / 100,
         maxAgeHours: num(fd, "maxAgeHours"),
+      },
+      outreach: {
+        dailySendLimit: num(fd, "dailySendLimit"),
+        followUpDays: str(fd, "followUpDays")
+          .split(/[,\s]+/)
+          .filter(Boolean)
+          .map(Number),
       },
       testShare: num(fd, "testShare") / 100,
       testFormats: lines(fd, "testFormats"),
@@ -85,6 +94,11 @@ export async function saveOpsAction(_: ActionResult, fd: FormData): Promise<Acti
     need(Number.isFinite(o.testShare) && o.testShare >= 0 && o.testShare <= 1, "Test share must be 0 to 100%.");
     need(o.testShare === 0 || o.testFormats.length > 0, "Add at least one test format, one per line, or set the test share to 0%.");
     need(Number.isInteger(o.decisionMinPosts) && o.decisionMinPosts >= 5 && o.decisionMinPosts <= 100, "Posts before a keep/cut suggestion must be 5 to 100 (20–30 is typical).");
+    need(Number.isInteger(o.outreach.dailySendLimit) && o.outreach.dailySendLimit >= 1 && o.outreach.dailySendLimit <= 1000, "Cold emails per day must be a whole number from 1 to 1000.");
+    need(
+      o.outreach.followUpDays.length <= 3 && o.outreach.followUpDays.every((d, i, a) => Number.isInteger(d) && d >= 1 && d <= 60 && (i === 0 || d > a[i - 1])),
+      "Follow-up days must be up to 3 increasing whole numbers, like 4, 9. Leave blank for no follow-ups.",
+    );
     need(o.surveyOptions.length > 0, `Add at least one generic survey answer, such as "Other".`);
     await saveOps(o);
     revalidatePath("/", "layout");

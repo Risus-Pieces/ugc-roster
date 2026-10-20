@@ -17,6 +17,7 @@ import { generateStatements, approveStatement, payStatement } from "@/lib/servic
 import { credibleViews } from "@/lib/engines/view-quality";
 import { runComplianceChecks, overallStatus } from "@/lib/engines/compliance";
 import { rng } from "@/lib/integrations/platforms/demo";
+import { DEFAULT_BRAND } from "@/lib/settings";
 import type { PgTable } from "drizzle-orm/pg-core";
 import { encrypt } from "@/lib/integrations/crypto";
 
@@ -132,8 +133,8 @@ async function main() {
       classification: label,
       draftReply:
         label === "rates"
-          ? `Thanks ${c.name.split(" ")[0]}. Our standard rate is $25 per approved video plus $1 per 1,000 views (first 14 days), with bonuses at 100K and 500K views. Creators who perform move up to higher tiers. Happy to talk it through: https://cal.com/your-team/creator-intro\n\nAlex`
-          : `Great to hear, ${c.name.split(" ")[0]}. Easiest next step is a quick 15-minute call so I can walk you through the brief and how payouts work: https://cal.com/your-team/creator-intro\n\nAlex`,
+          ? `Thanks ${c.name.split(" ")[0]}. Our standard rate is $25 per approved video plus $1 per 1,000 views (first 14 days), with bonuses at 100K and 500K views. Creators who perform move up to higher tiers. Happy to talk it through: ${DEFAULT_BRAND.bookingUrl}\n\nAlex`
+          : `Great to hear, ${c.name.split(" ")[0]}. Easiest next step is a quick 15-minute call so I can walk you through the brief and how payouts work: ${DEFAULT_BRAND.bookingUrl}\n\nAlex`,
       createdAt: new Date(now - r.int(1, 30) * HOUR),
     });
   }
@@ -142,8 +143,8 @@ async function main() {
   }
   await db.insert(messages).values({ creatorId: cut[0].id, direction: "in", subject: "Re: Paid video collab", body: "Not for me right now, thanks though!", status: "handled", classification: "not_interested" });
   await db.insert(calls).values([
-    { creatorId: replied[0].id, scheduledAt: new Date(now + 26 * HOUR), link: "https://cal.com/your-team/creator-intro" },
-    { creatorId: replied[3].id, scheduledAt: new Date(now + 50 * HOUR), link: "https://cal.com/your-team/creator-intro" },
+    { creatorId: replied[0].id, scheduledAt: new Date(now + 26 * HOUR), link: DEFAULT_BRAND.bookingUrl },
+    { creatorId: replied[3].id, scheduledAt: new Date(now + 50 * HOUR), link: DEFAULT_BRAND.bookingUrl },
   ]);
 
   // Referrals

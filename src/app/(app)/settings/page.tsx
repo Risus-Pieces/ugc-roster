@@ -76,7 +76,7 @@ async function BrandForm() {
           <Field label="App URL" hint="Tracking links (/r/CODE) redirect here with ?ref=CODE.">
             <input name="appUrl" type="url" defaultValue={b.appUrl} className={input} required />
           </Field>
-          <Field label="Booking link" hint="Cal.com or similar, offered to creators who reply.">
+          <Field label="Booking link" hint="Your Calendly link, offered to creators who reply.">
             <input name="bookingUrl" type="url" defaultValue={b.bookingUrl} className={input} />
           </Field>
         </div>
@@ -87,9 +87,14 @@ async function BrandForm() {
           <Field label="Sender name">
             <input name="senderName" defaultValue={b.senderName} className={input} required />
           </Field>
-          <Field label="Sender email" hint="Shown in emails. Actual sending uses EMAIL_FROM on a dedicated outreach domain.">
+          <Field label="Sender email" hint="Where replies go if EMAIL_REPLY_TO isn't set. Sending itself uses EMAIL_FROM on your outreach domain.">
             <input name="senderEmail" type="email" defaultValue={b.senderEmail} className={input} required />
           </Field>
+          <div className="sm:col-span-2">
+            <Field label="Mailing address" hint="Required by US anti-spam law (CAN-SPAM) in every cold email. Added to a footer with an opt-out line. A PO box or registered agent address works.">
+              <input name="mailingAddress" defaultValue={b.mailingAddress} placeholder="123 Main St, Suite 4, Austin, TX 78701" className={input} />
+            </Field>
+          </div>
         </div>
       </Card>
 
@@ -144,6 +149,17 @@ async function OpsForm() {
           </Field>
           <Field label="Max post age (hours)">
             <input name="maxAgeHours" defaultValue={o.breakout.maxAgeHours} inputMode="numeric" className={cx(input, "num")} />
+          </Field>
+        </div>
+      </Card>
+
+      <Card title="Outreach">
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Cold emails per day" hint="Openers + follow-ups. Start around 30–50 on a new domain and raise it slowly.">
+            <input name="dailySendLimit" defaultValue={o.outreach.dailySendLimit} inputMode="numeric" className={cx(input, "num")} />
+          </Field>
+          <Field label="Follow-up days" hint="Days after the first email, comma-separated. Stops as soon as they reply. Example: 4, 9">
+            <input name="followUpDays" defaultValue={o.outreach.followUpDays.join(", ")} className={cx(input, "num")} />
           </Field>
         </div>
       </Card>
@@ -205,9 +221,9 @@ async function Integrations() {
     { name: "TikTok login", what: "Creators connect TikTok so stats come from the platform.", env: env("TIKTOK_CLIENT_KEY", "TIKTOK_CLIENT_SECRET"), status: connectedProviders.tiktok.configured() ? live : { label: "Demo connect", tone: "neutral" }, note: <Url>{`${origin}/api/oauth/tiktok/callback`}</Url> },
     { name: "Instagram login", what: "Creators connect Instagram (professional accounts).", env: env("INSTAGRAM_APP_ID", "INSTAGRAM_APP_SECRET"), status: connectedProviders.instagram.configured() ? live : { label: "Demo connect", tone: "neutral" }, note: <Url>{`${origin}/api/oauth/instagram/callback`}</Url> },
     { name: "Google / YouTube login", what: "Creators connect their YouTube channel.", env: env("GOOGLE_CLIENT_ID", "GOOGLE_CLIENT_SECRET"), status: connectedProviders.youtube.configured() ? live : { label: "Demo connect", tone: "neutral" }, note: <Url>{`${origin}/api/oauth/youtube/callback`}</Url> },
-    { name: "Email (Resend)", what: "Sends outreach and replies. Use a separate outreach domain with SPF, DKIM and DMARC.", env: env("RESEND_API_KEY", "EMAIL_FROM", "EMAIL_REPLY_TO?"), status: emailLive() ? live : { label: "Simulated", tone: "neutral" }, note: emailLive() ? undefined : "Messages are logged, not sent." },
+    { name: "Email (Resend)", what: "Sends outreach and replies. Use a separate outreach domain with SPF, DKIM and DMARC.", env: env("RESEND_API_KEY", "EMAIL_FROM", "EMAIL_REPLY_TO?", "RESEND_WEBHOOK_SECRET?"), status: emailLive() ? live : { label: "Simulated", tone: "neutral" }, note: emailLive() ? undefined : "Messages are logged, not sent." },
     { name: "Inbound email", what: "Creator replies forwarded here are classified and matched by email.", env: env("INBOUND_EMAIL_SECRET?"), status: has("INBOUND_EMAIL_SECRET") ? { label: "Secured", tone: "profit" } : { label: "Open", tone: "tally" }, note: <Url>{`POST ${origin}/api/webhooks/inbound-email`}</Url> },
-    { name: "Booking (Cal.com)", what: "Booked intro calls show up on the creator.", env: env("BOOKING_WEBHOOK_SECRET?"), status: has("BOOKING_WEBHOOK_SECRET") ? { label: "Secured", tone: "profit" } : { label: "Open", tone: "tally" }, note: <Url>{`POST ${origin}/api/webhooks/booking`}</Url> },
+    { name: "Booking (Calendly)", what: "Booked intro calls show up on the creator.", env: env("BOOKING_WEBHOOK_SECRET?"), status: has("BOOKING_WEBHOOK_SECRET") ? { label: "Secured", tone: "profit" } : { label: "Open", tone: "tally" }, note: <Url>{`POST ${origin}/api/webhooks/booking`}</Url> },
     { name: "RevenueCat webhook", what: "Hourly revenue and trials, plus promo-code matches from subscriber attributes.", env: env("REVENUECAT_WEBHOOK_SECRET"), status: has("REVENUECAT_WEBHOOK_SECRET") ? { label: "Secured", tone: "profit" } : { label: "Open", tone: "tally" }, note: <><Url>{`POST ${origin}/api/webhooks/revenuecat`}</Url><div className="mt-0.5">{rc[0] ? `Last data ${day(rc[0].t)}` : "No events yet"}</div></> },
     { name: "App Store Connect", what: "Daily first-time downloads and proceeds (pulled by the daily job).", env: env("ASC_ISSUER_ID", "ASC_KEY_ID", "ASC_PRIVATE_KEY", "ASC_VENDOR_NUMBER"), status: ascConfigured() ? live : { label: "Not connected", tone: "neutral" } },
     { name: "Google Play", what: "Daily installs from the Play Console CSV export.", env: [], status: play.length ? { label: "Imported", tone: "profit" } : { label: "No data", tone: "neutral" }, note: play.length ? `${play.length} days, latest ${day(play[0].t)}` : "Import a CSV below." },
@@ -277,11 +293,11 @@ async function Integrations() {
             <Hook title="RevenueCat" url={`${origin}/api/webhooks/revenuecat`}>
               RevenueCat → Integrations → Webhooks. Set the Authorization header to your REVENUECAT_WEBHOOK_SECRET. Set a <span className="num">creator_code</span> subscriber attribute in the app to match purchases to promo codes.
             </Hook>
-            <Hook title="Inbound email" url={`${origin}/api/webhooks/inbound-email`}>
-              Forward replies here as JSON <span className="num">{"{ from, subject, text }"}</span> (Resend inbound works as-is). Send INBOUND_EMAIL_SECRET as the <span className="num">x-webhook-secret</span> header.
+            <Hook title="Creator replies (Resend)" url={`${origin}/api/webhooks/inbound-email`}>
+              Resend → Webhooks → Add endpoint, event <span className="num">email.received</span>. Copy its signing secret into RESEND_WEBHOOK_SECRET. Set EMAIL_REPLY_TO to an address on your Resend receiving domain so replies arrive here, get sorted, and get a drafted answer.
             </Hook>
-            <Hook title="Cal.com booking" url={`${origin}/api/webhooks/booking`}>
-              Cal.com → Settings → Developer → Webhooks, event &ldquo;Booking created&rdquo;. Put BOOKING_WEBHOOK_SECRET in the secret field; the signature is checked.
+            <Hook title="Calendly bookings" url={`${origin}/api/webhooks/booking`}>
+              Needs a paid Calendly plan. Create a webhook subscription for <span className="num">invitee.created</span> (Calendly → Integrations → API and webhooks) with a signing key, and put that key in BOOKING_WEBHOOK_SECRET. On the free plan, log calls from the Replies tab instead.
             </Hook>
             <Hook title="Tracking links" url={`${origin}/r/PROMOCODE`}>
               Logs a click and redirects to your app URL with <span className="num">?ref=PROMOCODE</span> and UTM tags.

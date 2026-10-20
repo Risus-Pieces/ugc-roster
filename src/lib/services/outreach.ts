@@ -1,10 +1,11 @@
 import "server-only";
-import { and, desc, eq, inArray } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { db, creators, creatorAccounts, messages, posts, calls, referrals, type Stage } from "@/db";
-import { writeOpener, triageReply, aiEnabled } from "@/lib/ai";
+import { writeOpener, triageReply, writeFollowUp, aiEnabled } from "@/lib/ai";
 import { sendEmail, emailLive } from "@/lib/integrations/email";
 import { normalizeEmail } from "@/lib/engines/contact";
-import { getBrand } from "@/lib/settings";
+import { getBrand, getOps } from "@/lib/settings";
+import { complianceFooter, doNotContact, followUpStatus, withFooter } from "@/lib/engines/outreach";
 import { rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
 
@@ -34,15 +35,36 @@ export async function draftOpener(creatorId: string, campaignId?: string | null)
   return { message: m, source: opener._source, error: opener._error };
 }
 
+/** Replies should land where the app can read them: the Resend receiving address if set, else the sender. */
+const replyToAddress = (senderEmail: string) => process.env.EMAIL_REPLY_TO?.trim() || senderEmail;
+
+/** Cold emails (openers + follow-ups) sent since midnight UTC. */
+export async function coldEmailsSentToday() {
+  const start = new Date();
+  start.setUTCHours(0, 0, 0, 0);
+  return db.$count(messages, and(eq(messages.direction, "out"), inArray(messages.status, ["sent", "simulated"]), gte(messages.sentAt, start), isNull(messages.classification)));
+}
+
+/**
+ * Sends a cold email (opener or follow-up) with the compliance footer, after checking the creator
+ * hasn't opted out and today's send limit isn't used up.
+ */
 export async function sendMessage(messageId: string, edits?: { subject?: string; body?: string }) {
   const m = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
   if (!m) throw new Error("Message not found");
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, m.creatorId) });
   if (!creator?.email) throw new Error("Creator has no email");
+  const [brand, ops, history] = await Promise.all([getBrand(), getOps(), db.select().from(messages).where(eq(messages.creatorId, creator.id))]);
+
+  const blocked = doNotContact(creator.stage, history);
+  if (blocked) throw new Error(`${creator.name} ${blocked}, so they won't be emailed again.`);
+  if (emailLive() && !brand.mailingAddress.trim()) throw new Error("Add your mailing address in Settings → Outreach sender first. US law (CAN-SPAM) requires it in cold email.");
+  const sentToday = await coldEmailsSentToday();
+  if (sentToday >= ops.outreach.dailySendLimit) throw new Error(`Today's limit of ${ops.outreach.dailySendLimit} cold emails is used up. The rest can go tomorrow, or raise the limit in Settings → Outreach.`);
+
   const subject = edits?.subject ?? m.subject ?? "";
-  const body = edits?.body ?? m.body;
-  const brand = await getBrand();
-  const res = await sendEmail({ to: creator.email, subject, text: body, replyTo: brand.senderEmail });
+  const body = withFooter(edits?.body ?? m.body, complianceFooter({ senderName: brand.senderName, brandName: brand.name, mailingAddress: brand.mailingAddress }));
+  const res = await sendEmail({ to: creator.email, subject, text: body, replyTo: replyToAddress(brand.senderEmail) });
   await db
     .update(messages)
     .set({ subject, body, status: res.status, providerMessageId: res.providerMessageId, sentAt: res.status === "failed" ? null : new Date() })
@@ -81,8 +103,10 @@ export async function sendDraftReply(inboundId: string, body?: string) {
   if (!creator?.email) throw new Error("Creator has no email");
   const text = body ?? inbound.draftReply ?? "";
   const subject = inbound.subject ? (inbound.subject.startsWith("Re:") ? inbound.subject : `Re: ${inbound.subject}`) : "Re: Paid video collab";
-  const res = await sendEmail({ to: creator.email, subject, text });
-  await db.insert(messages).values({ creatorId: creator.id, direction: "out", subject, body: text, status: res.status, providerMessageId: res.providerMessageId, sentAt: new Date() });
+  const brand = await getBrand();
+  const res = await sendEmail({ to: creator.email, subject, text, replyTo: replyToAddress(brand.senderEmail) });
+  // Replies to a creator who wrote in are marked "reply" so they don't count toward the cold-email limit.
+  await db.insert(messages).values({ creatorId: creator.id, direction: "out", subject, body: text, status: res.status, classification: "other", providerMessageId: res.providerMessageId, sentAt: new Date() });
   await db.update(messages).set({ status: "handled" }).where(eq(messages.id, inboundId));
   if (inbound.classification === "not_interested") await moveStage(creator.id, "cut");
   return res;
@@ -157,4 +181,41 @@ export async function discardDraft(messageId: string) {
 /** Whether email goes out for real (Resend) and whether drafts are written by Claude or templates. */
 export function outreachMode() {
   return { emailLive: emailLive(), aiLive: aiEnabled() };
+}
+
+// ─── Follow-ups ─────────────────────────────────────────────────────────────
+
+/** Contacted creators who haven't replied and are due their next follow-up. */
+export async function followUpsDue() {
+  const ops = await getOps();
+  if (!ops.outreach.followUpDays.length) return [];
+  const contacted = await db.select().from(creators).where(eq(creators.stage, "contacted"));
+  if (!contacted.length) return [];
+  const history = await db.select().from(messages).where(inArray(messages.creatorId, contacted.map((c) => c.id)));
+  const byCreator = new Map<string, (typeof history)[number][]>();
+  for (const m of history) byCreator.set(m.creatorId, [...(byCreator.get(m.creatorId) ?? []), m]);
+  const due = [];
+  for (const c of contacted) {
+    const h = byCreator.get(c.id) ?? [];
+    if (doNotContact(c.stage, h)) continue;
+    const s = followUpStatus(h, ops.outreach.followUpDays);
+    if (s.due) due.push({ creator: c, ...s });
+  }
+  return due.sort((a, b) => b.daysSinceFirst - a.daysSinceFirst);
+}
+
+/** Draft the next follow-up for each creator that's due; drafts then appear in Compose for review. */
+export async function draftFollowUps(creatorIds?: string[]) {
+  const [due, brand] = await Promise.all([followUpsDue(), getBrand()]);
+  let drafted = 0;
+  let source: "ai" | "template" = "template";
+  for (const d of due) {
+    if (creatorIds && !creatorIds.includes(d.creator.id)) continue;
+    const card = await rateCardFor(d.creator.rateCardId);
+    const f = await writeFollowUp({ brand, creatorName: d.creator.name, step: d.step, originalBody: d.originalBody, baseCents: card.baseCents, cpmCents: card.cpmCents });
+    source = f._source;
+    await db.insert(messages).values({ creatorId: d.creator.id, direction: "out", subject: d.subject, body: f.body, status: "draft" });
+    drafted++;
+  }
+  return { drafted, source };
 }
