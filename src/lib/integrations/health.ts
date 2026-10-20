@@ -49,13 +49,19 @@ async function checkReplyTo(): Promise<Check> {
   const name = "Creator replies (Resend receiving)";
   const replyTo = process.env.EMAIL_REPLY_TO?.trim();
   if (!replyTo) return { name, status: "warn", detail: "EMAIL_REPLY_TO isn't set — replies go to the sender email in Settings, not into Roster." };
+  const domain = domainOf(replyTo) ?? "";
   const signed = Boolean(process.env.RESEND_WEBHOOK_SECRET);
-  const resendApp = /\.resend\.app$/i.test(domainOf(replyTo) ?? "");
-  return {
-    name,
-    status: signed ? "ok" : "warn",
-    detail: `Replies go to ${replyTo}${resendApp ? " (Resend receiving address)" : ""}. ${signed ? "Webhook signature checking is on." : "Set RESEND_WEBHOOK_SECRET so only Resend can post replies."}`,
-  };
+  const signing = signed ? "Webhook signature checking is on." : "Set RESEND_WEBHOOK_SECRET so only Resend can post replies.";
+  if (/\.resend\.app$/i.test(domain)) return { name, status: signed ? "ok" : "warn", detail: `Replies go to ${replyTo} (Resend receiving address). ${signing}` };
+  // A custom reply domain must be added in Resend with receiving on, and verified.
+  if (!process.env.RESEND_API_KEY) return { name, status: "warn", detail: `Replies go to ${replyTo}. Add RESEND_API_KEY to check the domain.` };
+  const res = await fetch("https://api.resend.com/domains", { headers: { Authorization: `Bearer ${process.env.RESEND_API_KEY}` } });
+  if (!res.ok) return { name, status: "warn", detail: `Replies go to ${replyTo}. Couldn't read domains from Resend (${res.status}) to confirm receiving.` };
+  const { data = [] } = (await res.json()) as { data?: { name: string; status: string }[] };
+  const d = data.find((x) => x.name === domain);
+  if (!d) return { name, status: "fail", detail: `${domain} isn't added in Resend. Add it under Domains with receiving on, or replies will bounce.` };
+  if (d.status !== "verified") return { name, status: "warn", detail: `Replies go to ${replyTo}, but ${domain} is still "${d.status}" in Resend. It usually verifies within an hour of adding the DNS records.` };
+  return { name, status: signed ? "ok" : "warn", detail: `Replies go to ${replyTo} and ${domain} is verified in Resend. ${signing}` };
 }
 
 async function checkYouTube(): Promise<Check> {
