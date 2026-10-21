@@ -28,9 +28,9 @@ async function main() {
 
   let total = 0;
   for (const file of files) {
-    const { created, plan } = await runImport(readFileSync(file, "utf8"), { campaignId: campaign.id, source, defaultPlatform: null, onlyInBand: process.argv.includes("--only-in-band") });
+    const { created, emailsAdded, plan } = await runImport(readFileSync(file, "utf8"), { campaignId: campaign.id, source, defaultPlatform: null, onlyInBand: process.argv.includes("--only-in-band") });
     total += created;
-    console.log(`${basename(file)}: ${created} added · ${plan.duplicates.length} already in Roster · ${plan.skipped.length} skipped`);
+    console.log(`${basename(file)}: ${created} added · ${plan.duplicates.length} already in Roster (${emailsAdded} given a missing email) · ${plan.skipped.length} skipped`);
   }
   console.log(`Done: ${total} creators added to ${campaign.name}.`);
   await pool.end();

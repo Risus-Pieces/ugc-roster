@@ -134,7 +134,16 @@ export async function importCreatorsAction(_: ImportSummary, fd: FormData): Prom
     }
     const r = await runImport(csv, opts);
     revalidatePath("/", "layout");
-    return { ok: r.created > 0, mode, created: r.created, plan: shape(r.plan), message: r.created ? `Imported ${r.created} creators into the campaign. Go to Outreach → Compose to write openers.` : "Nothing was imported — see the reasons below." };
+    const filled = r.emailsAdded ? `Added ${r.emailsAdded} missing emails to creators already in Roster.` : "";
+    return {
+      ok: r.created > 0 || r.emailsAdded > 0,
+      mode,
+      created: r.created,
+      plan: shape(r.plan),
+      message: r.created
+        ? `Imported ${r.created} creators into the campaign. ${filled} Go to Outreach → Compose to write openers.`.replace("  ", " ")
+        : filled || "Nothing was imported — see the reasons below.",
+    };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }

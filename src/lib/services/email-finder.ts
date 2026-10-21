@@ -4,6 +4,7 @@ import { alias } from "drizzle-orm/pg-core";
 import { db, creators, creatorAccounts } from "@/db";
 import { extractEmails, creatorEmailsFromPage, normalizeEmail } from "@/lib/engines/contact";
 import { emailLooksLike, looksLikeSamePerson, parseTikTokProfile, worthOpening, type PublicProfile } from "@/lib/engines/public-profile";
+import { businessDiscovery, instagramBusinessId, InstagramRateLimit } from "@/lib/integrations/platforms/instagram";
 import { log } from "./common";
 
 const HEADERS = {
@@ -76,21 +77,21 @@ async function eachTikTokProfile<T extends { handle: string }>(
 }
 
 /** The bio's email, else one from the bio link (Linktree, Beacons, a personal site). Never guessed. */
-async function contactEmail(profile: PublicProfile, handle: string): Promise<{ email: string | null; via: string }> {
-  const fromBio = extractEmails(profile.bio)[0];
-  if (fromBio) return { email: fromBio, via: "bio" };
+async function contactEmail(profile: Pick<PublicProfile, "bio" | "bioLink">, handle: string): Promise<{ email: string | null; via: string; fromBio: boolean }> {
+  const inBio = extractEmails(profile.bio)[0];
+  if (inBio) return { email: inBio, via: "bio", fromBio: true };
   const link = worthOpening(profile.bioLink);
-  if (!link) return { email: null, via: "" };
+  if (!link) return { email: null, via: "", fromBio: false };
   try {
     const page = await getPage(link);
-    return { email: creatorEmailsFromPage(page.html, link, handle)[0] ?? null, via: new URL(link).hostname };
+    return { email: creatorEmailsFromPage(page.html, link, handle)[0] ?? null, via: new URL(link).hostname, fromBio: false };
   } catch {
-    return { email: null, via: "" }; // dead or slow link pages are common
+    return { email: null, via: "", fromBio: false }; // dead or slow link pages are common
   }
 }
 
 /** Save the email unless another creator already has it (usually the same person on another platform). */
-async function saveEmail(creatorId: string, handle: string, found: { email: string; via: string }, opts: FindEmailsOptions, result: FindEmailsResult, tag: string) {
+async function saveEmail(creatorId: string, handle: string, found: { email: string; via: string; fromBio: boolean }, opts: FindEmailsOptions, result: FindEmailsResult, tag: string) {
   const say = opts.onProgress ?? (() => {});
   const normalized = normalizeEmail(found.email)!;
   const owner = await db.query.creators.findFirst({ where: and(eq(creators.emailNormalized, normalized), ne(creators.id, creatorId)) });
@@ -100,7 +101,7 @@ async function saveEmail(creatorId: string, handle: string, found: { email: stri
     return;
   }
   if (!opts.dryRun) await db.update(creators).set({ email: found.email, emailNormalized: normalized }).where(eq(creators.id, creatorId));
-  if (found.via === "bio" || found.via === "TikTok bio") result.fromBio++;
+  if (found.fromBio) result.fromBio++;
   else result.fromLink++;
   say(`${tag}: ${found.email} (from ${found.via})`);
 }
@@ -134,7 +135,7 @@ export async function findTikTokEmails(opts: FindEmailsOptions = {}): Promise<Fi
       say(`${tag}: no email${profile.bioLink ? ` (link: ${profile.bioLink})` : ""}`);
       return;
     }
-    await saveEmail(row.creatorId, row.handle, { email: found.email, via: found.via }, opts, result, tag);
+    await saveEmail(row.creatorId, row.handle, { ...found, email: found.email }, opts, result, tag);
   });
 
   const total = result.fromBio + result.fromLink;
@@ -191,10 +192,75 @@ export async function findInstagramEmailsViaTikTok(opts: FindEmailsOptions = {})
       say(`${tag}: same person on TikTok, no email`);
       return;
     }
-    await saveEmail(row.creatorId, row.handle, { email: found.email, via: found.via === "bio" ? "TikTok bio" : `TikTok link, ${found.via}` }, opts, result, tag);
+    await saveEmail(row.creatorId, row.handle, { ...found, email: found.email, via: found.fromBio ? "TikTok bio" : `TikTok link, ${found.via}` }, opts, result, tag);
   });
 
   const total = result.fromBio + result.fromLink;
   if (!opts.dryRun && total) await log("discovery", `Found ${total} Instagram creator emails through their TikTok`);
+  return result;
+}
+
+/**
+ * Instagram creators' bios and website links through Instagram's official Business Discovery API
+ * (professional accounts only). Paced, and stops at Instagram's usage limit; a checked account
+ * keeps its bio, so re-runs pick up where the last one stopped.
+ */
+export async function findInstagramEmails(opts: FindEmailsOptions = {}): Promise<FindEmailsResult> {
+  const say = opts.onProgress ?? (() => {});
+  const token = process.env.INSTAGRAM_GRAPH_TOKEN;
+  if (!token) throw new Error("Set INSTAGRAM_GRAPH_TOKEN in .env.local first (see .env.example).");
+  const igUserId = process.env.INSTAGRAM_BUSINESS_ID || (await instagramBusinessId(token));
+  if (!igUserId) throw new Error("None of your Facebook Pages has an Instagram professional account connected. Connect Sooz's Instagram to its Page, then run again.");
+
+  const todo = await db
+    .select({ accountId: creatorAccounts.id, handle: creatorAccounts.handle, creatorId: creators.id })
+    .from(creatorAccounts)
+    .innerJoin(creators, eq(creators.id, creatorAccounts.creatorId))
+    .where(and(eq(creatorAccounts.platform, "instagram"), isNull(creatorAccounts.bio), isNull(creators.email)))
+    .limit(opts.limit ?? 5000);
+  const result = emptyResult();
+  const delay = opts.delayMs ?? 2500;
+  let errors = 0;
+  say(`${todo.length} Instagram creators to look up`);
+
+  for (const [i, row] of todo.entries()) {
+    if (i > 0) await sleep(delay);
+    const tag = `[${i + 1}/${todo.length}] @${row.handle}`;
+    let profile: Awaited<ReturnType<typeof businessDiscovery>>;
+    try {
+      profile = await businessDiscovery(row.handle, { token, igUserId });
+    } catch (e) {
+      if (e instanceof InstagramRateLimit) {
+        result.stopped = `Instagram's usage limit was reached (${e.message}). Run again in an hour; it picks up where it left off.`;
+        break;
+      }
+      say(`${tag}: ${(e as Error).message}`);
+      if (++errors >= MAX_FAILURES_IN_A_ROW) {
+        result.stopped = `${errors} lookups failed in a row; the token may have expired. Last error: ${(e as Error).message}`;
+        break;
+      }
+      continue;
+    }
+    errors = 0;
+    result.checked++;
+
+    if (!profile.found) {
+      result.gone++;
+      say(`${tag}: not found, or a personal account`);
+      if (!opts.dryRun) await db.update(creatorAccounts).set({ bio: "" }).where(eq(creatorAccounts.id, row.accountId));
+      continue;
+    }
+    const found = await contactEmail({ bio: profile.bio, bioLink: profile.website }, row.handle);
+    if (!opts.dryRun) await db.update(creatorAccounts).set({ bio: profile.bio, ...(profile.followers !== null && { followers: profile.followers }) }).where(eq(creatorAccounts.id, row.accountId));
+    if (!found.email) {
+      result.noEmail++;
+      say(`${tag}: no email${profile.website ? ` (link: ${profile.website})` : ""}`);
+      continue;
+    }
+    await saveEmail(row.creatorId, row.handle, { ...found, email: found.email }, opts, result, tag);
+  }
+
+  const total = result.fromBio + result.fromLink;
+  if (!opts.dryRun && total) await log("discovery", `Found ${total} creator emails in Instagram bios and website links`);
   return result;
 }

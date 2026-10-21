@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, inArray } from "drizzle-orm";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 import { db, creators, creatorAccounts, campaignCreators, campaigns, creatorScores } from "@/db";
 import { normalizeRows, parseCsv, type Field, type ImportPlatform, type ImportRow } from "@/lib/engines/csv-import";
 import { assessFromAggregates } from "@/lib/engines/authenticity";
@@ -83,6 +83,7 @@ export async function planImport(csv: string, opts: ImportOptions): Promise<Impo
 export async function runImport(csv: string, opts: ImportOptions) {
   const plan = await planImport(csv, opts);
   const brand = await getBrand();
+  const emailsAdded = await fillMissingEmails(csv, opts, plan);
   let created = 0;
   for (const r of plan.ready) {
     const email = r.email && !isReservedAddress(r.email) ? r.email : null;
@@ -126,8 +127,34 @@ export async function runImport(csv: string, opts: ImportOptions) {
     }
     created++;
   }
-  await log("import", `Imported ${created} creators from ${opts.source}${plan.duplicates.length ? ` · ${plan.duplicates.length} already in Roster` : ""}`);
-  return { created, plan };
+  await log("import", `Imported ${created} creators from ${opts.source}${plan.duplicates.length ? ` · ${plan.duplicates.length} already in Roster` : ""}${emailsAdded ? ` · added ${emailsAdded} missing emails` : ""}`);
+  return { created, emailsAdded, plan };
+}
+
+/**
+ * Creators already in Roster without an email get the one from the file (matched by platform + handle),
+ * so a re-export or a scraped list can fill in contacts. Existing emails are never overwritten.
+ */
+async function fillMissingEmails(csv: string, opts: ImportOptions, plan: ImportPlan) {
+  if (!plan.duplicates.length) return 0;
+  const rows = normalizeRows(parseCsv(csv), opts.defaultPlatform).rows;
+  const dupLines = new Set(plan.duplicates.map((d) => d.line));
+  let added = 0;
+  for (const r of rows) {
+    if (!dupLines.has(r.line) || !r.email || !r.platform || !r.handle || isReservedAddress(r.email)) continue;
+    const [acct] = await db.select({ creatorId: creatorAccounts.creatorId }).from(creatorAccounts).where(and(eq(creatorAccounts.platform, r.platform), eq(creatorAccounts.handle, r.handle)));
+    if (!acct) continue; // matched by email, so it already has one
+    const normalized = normalizeEmail(r.email);
+    const taken = await db.query.creators.findFirst({ where: eq(creators.emailNormalized, normalized!) });
+    if (taken) continue;
+    const res = await db
+      .update(creators)
+      .set({ email: r.email, emailNormalized: normalized })
+      .where(and(eq(creators.id, acct.creatorId), isNull(creators.email)))
+      .returning({ id: creators.id });
+    added += res.length;
+  }
+  return added;
 }
 
 export async function campaignOptions() {

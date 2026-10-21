@@ -87,3 +87,37 @@ export const instagramConnected: ConnectedProvider = {
     return posts;
   },
 };
+
+const FB_GRAPH = "https://graph.facebook.com/v26.0";
+
+/** Instagram's usage limit was hit (Graph error codes 4, 17, 32, 613, 80002). Try again later. */
+export class InstagramRateLimit extends Error {}
+
+/**
+ * Business Discovery (Instagram API with Facebook Login): public fields of another professional
+ * account by username, looked up through your own professional account. Needs a Facebook user token
+ * with instagram_basic, instagram_manage_insights and pages_read_engagement.
+ */
+export async function businessDiscovery(username: string, auth: { token: string; igUserId: string }) {
+  const fields = `business_discovery.username(${username}){username,biography,website,followers_count}`;
+  const res = await fetch(`${FB_GRAPH}/${auth.igUserId}?fields=${encodeURIComponent(fields)}&access_token=${auth.token}`, { signal: AbortSignal.timeout(20_000) });
+  const j = await res.json();
+  if (j.error) {
+    const { code, error_subcode: subcode, message } = j.error as { code: number; error_subcode?: number; message: string };
+    if ([4, 17, 32, 613, 80002].includes(code)) throw new InstagramRateLimit(message);
+    // Not found, a personal (non-professional) account, or age-gated
+    if (code === 110 || subcode === 2207013) return { found: false as const };
+    throw new Error(`Instagram Business Discovery failed for @${username}: ${message}`);
+  }
+  const u = j.business_discovery as { biography?: string; website?: string; followers_count?: number };
+  return { found: true as const, bio: u.biography ?? "", website: u.website || null, followers: u.followers_count ?? null };
+}
+
+/** The Instagram professional account linked to one of the token owner's Facebook Pages. */
+export async function instagramBusinessId(token: string): Promise<string | null> {
+  const res = await fetch(`${FB_GRAPH}/me/accounts?fields=name,instagram_business_account{id,username}&access_token=${token}`);
+  const j = await res.json();
+  if (j.error) throw new Error(`Couldn't list your Facebook Pages: ${j.error.message}`);
+  const page = (j.data as { instagram_business_account?: { id: string } }[] | undefined)?.find((p) => p.instagram_business_account);
+  return page?.instagram_business_account?.id ?? null;
+}
