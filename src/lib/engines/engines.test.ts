@@ -1,7 +1,8 @@
 import { describe, it, expect } from "vitest";
 import { typicalViews, suggestedBaseCents } from "./creator-score";
 import { assessAuthenticity, commentQuality } from "./authenticity";
-import { extractEmails, normalizeEmail, isReservedAddress } from "./contact";
+import { extractEmails, emailsFromPage, creatorEmailsFromPage, normalizeEmail, isReservedAddress } from "./contact";
+import { emailLooksLike, looksLikeSamePerson, parseTikTokProfile, worthOpening } from "./public-profile";
 import { rankLookalikes } from "./lookalike";
 import { classifyReply } from "./reply-classifier";
 import { runComplianceChecks, claimedExperienceDays, overallStatus } from "./compliance";
@@ -85,6 +86,54 @@ describe("contact", () => {
   it("normalizes for dedupe", () => {
     expect(normalizeEmail("Jane.Doe+ugc@GoogleMail.com")).toBe("janedoe@gmail.com");
     expect(normalizeEmail("a.b+x@company.com")).toBe("a.b@company.com");
+  });
+  it("finds emails on link-in-bio pages without picking up vendor or asset addresses", () => {
+    const html = `<img src="/logo@2x.png"><a href="mailto:Collabs%40PaigeEats.com?subject=Hi">Email</a>
+      <script>{"support":"help@linktr.ee","dsn":"https://abc@o1.ingest.sentry.io/1"}</script><p>or paige&#64;gmail.com</p>`;
+    expect(emailsFromPage(html)).toEqual(["collabs@paigeeats.com", "paige@gmail.com"]);
+    expect(emailsFromPage("<p>Eat at joes. com</p>")).toEqual([]);
+    expect(emailsFromPage("<p>________amber777@gmail.com</p>")).toEqual(["amber777@gmail.com"]);
+  });
+  it("only trusts other sites' emails when they belong to the creator", () => {
+    const page = "<p>Contact joe@user.com or study@vumc.org</p><a href='mailto:breezy.bites@gmail.com'>me</a>";
+    expect(creatorEmailsFromPage(page, "https://redcap.vumc.org/surveys/?s=X", "breezybitesss")).toEqual(["breezy.bites@gmail.com"]);
+    expect(creatorEmailsFromPage("<p>random@gmail.com</p>", "https://shop.example-store.com", "breezybitesss")).toEqual([]);
+    expect(creatorEmailsFromPage("<p>hello@paigeeats.com</p>", "https://paigeeats.com/about", "eatsbypaigee")).toEqual(["hello@paigeeats.com"]);
+    expect(creatorEmailsFromPage("<p>random@gmail.com</p>", "https://linktr.ee/breezy", "breezybitesss")).toEqual(["random@gmail.com"]);
+  });
+});
+
+describe("public profile", () => {
+  const page = (scope: object) => `<html><script id="__UNIVERSAL_DATA_FOR_REHYDRATION__" type="application/json">${JSON.stringify({ __DEFAULT_SCOPE__: scope })}</script></html>`;
+  it("reads a TikTok bio, bio link and followers", () => {
+    const p = parseTikTokProfile(
+      page({ "webapp.user-detail": { userInfo: { user: { uniqueId: "eatsbypaigee", nickname: "eatsbypaige", signature: "mukbangs 💌: eatsbypaige@gmail.com", bioLink: { link: "https://linktr.ee/eatsbypaige" } }, stats: { followerCount: 13000 } } } }),
+    );
+    expect(p).toEqual({ found: true, name: "eatsbypaige", bio: "mukbangs 💌: eatsbypaige@gmail.com", bioLink: "https://linktr.ee/eatsbypaige", followers: 13000 });
+  });
+  it("tells a missing account apart from a blocked page", () => {
+    expect(parseTikTokProfile(page({ "webapp.user-detail": { statusCode: 10221, userInfo: {} } }))?.found).toBe(false);
+    expect(parseTikTokProfile("<html>Please verify you are human</html>")).toBeNull();
+  });
+  it("only opens bio links that could hold a contact email", () => {
+    expect(worthOpening("linktr.ee/eatsbypaige")).toBe("https://linktr.ee/eatsbypaige");
+    expect(worthOpening("https://www.amazon.com/shop/paige")).toBeNull();
+    expect(worthOpening("https://instagram.com/paige")).toBeNull();
+    expect(worthOpening(null)).toBeNull();
+  });
+  it("matches the same creator across platforms by display name", () => {
+    expect(looksLikeSamePerson("Ron Don Eatz", "rondon eatz 🍗")).toBe(true);
+    expect(looksLikeSamePerson("Ruben Garcia", "Ruben Reviews")).toBe(true);
+    expect(looksLikeSamePerson("Brou Quinn", "Brou")).toBe(true);
+    expect(looksLikeSamePerson("Jo", "Joanna Smith")).toBe(false);
+    expect(looksLikeSamePerson("Quentin Johnson", "5th_light")).toBe(false);
+    expect(looksLikeSamePerson("Jessica Perez", "Marcus")).toBe(false);
+    expect(looksLikeSamePerson("Jo Will", null)).toBe(false);
+  });
+  it("accepts a contact email built from the handle or name as proof of the same creator", () => {
+    expect(emailLooksLike("thatsandwichdude@gmail.com", "thatsandwichdude", "Jeremy")).toBe(true);
+    expect(emailLooksLike("rob.hobbs.eats@gmail.com", "ramen_rob", "Rob Hobbs")).toBe(true);
+    expect(emailLooksLike("bookings@gmail.com", "ramen_rob", "Rob Hobbs")).toBe(false);
   });
 });
 

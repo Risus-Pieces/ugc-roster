@@ -15,9 +15,64 @@ export function extractEmails(bio: string | null | undefined): string[] {
     found.add(`${user}@${domain}.${tld}${tld2 ? "." + tld2 : ""}`);
   }
   return [...found]
-    .map((e) => e.replace(/[.,;:]+$/, "").toLowerCase())
+    .map((e) => e.replace(/^[._%+-]+/, "").replace(/[.,;:]+$/, "").toLowerCase())
     .filter((e) => !ROLE_PREFIX.test(e))
     .sort((a, b) => businessRank(b) - businessRank(a));
+}
+
+// Addresses that show up in link-in-bio and website markup but aren't the creator's.
+const ASSET_TLD = /\.(png|jpe?g|gif|webp|svg|avif|ico|css|js|json|mp4|woff2?)$/i;
+const VENDOR_DOMAIN =
+  /@([a-z0-9-]+\.)*(linktr\.ee|linktree\.com|beacons\.ai|stan\.store|komi\.io|sentry\.io|wixpress\.com|wix\.com|squarespace\.com|shopify\.com|godaddy\.com|cloudflare\.com|w3\.org|schema\.org|email\.com|domain\.com|yourdomain\.com|mysite\.com|user\.com|test\.com|company\.com|website\.com|sample\.com)$/i;
+// Pages built for exactly this: a creator's links plus a contact button.
+const LINK_IN_BIO_HOST =
+  /(^|\.)(linktr\.ee|linktree\.com|beacons\.ai|stan\.store|komi\.io|lnk\.bio|bio\.link|campsite\.bio|hoo\.be|msha\.ke|tap\.bio|snipfeed\.co|linkin\.bio|carrd\.co|solo\.to|allmylinks\.com|linkpop\.com|taplink\.cc|bento\.me|withkoji\.com)$/i;
+
+/**
+ * Contact emails on a link-in-bio page or website: mailto: links and plain addresses in the markup.
+ * Skips obfuscation matching (too loose for whole pages) and vendor/asset addresses.
+ */
+export function emailsFromPage(html: string): string[] {
+  const src = html.replace(/&#0*64;|&#x0*40;|%40|\\u0040/gi, "@");
+  const found = new Set<string>();
+  for (const m of src.matchAll(/mailto:([^"'?\s<>]+)/gi)) {
+    try {
+      found.add(decodeURIComponent(m[1]));
+    } catch {
+      found.add(m[1]);
+    }
+  }
+  for (const m of src.matchAll(EMAIL_RE)) found.add(m[0]);
+  return [...found]
+    .map((e) => e.replace(/^[._%+-]+/, "").replace(/[.,;:]+$/, "").toLowerCase())
+    .filter((e) => /^[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}$/.test(e) && !ASSET_TLD.test(e) && !VENDOR_DOMAIN.test(e) && !ROLE_PREFIX.test(e) && !isReservedAddress(e))
+    .sort((a, b) => businessRank(b) - businessRank(a));
+}
+
+/** Do two strings share a run of at least n characters? ("cynthiacontentco", "thatgirlcynthiaa") → true */
+export function sharesChunk(a: string, b: string, n = 5) {
+  for (let i = 0; i + n <= a.length; i++) if (b.includes(a.slice(i, i + n))) return true;
+  return false;
+}
+
+/**
+ * The creator's own emails from a page their bio links to. Anything goes on link-in-bio pages; on
+ * other sites an address counts only if it resembles the handle, or sits on the site's own domain
+ * and that domain resembles the handle (their personal site). A bio link to a survey or a store
+ * shouldn't hand us someone else's address.
+ */
+export function creatorEmailsFromPage(html: string, pageUrl: string, handle: string): string[] {
+  const host = new URL(pageUrl).hostname.toLowerCase().replace(/^www\./, "");
+  const emails = emailsFromPage(html);
+  if (LINK_IN_BIO_HOST.test(host)) return emails;
+  const site = host.split(".").slice(-2).join(".");
+  const key = handle.toLowerCase().replace(/[^a-z0-9]/g, "");
+  const ownSite = sharesChunk(site.split(".")[0], key);
+  return emails.filter((e) => {
+    const [local, domain] = e.split("@");
+    if (ownSite && (domain === site || domain.endsWith(`.${site}`))) return true;
+    return sharesChunk(local.replace(/[^a-z0-9]/g, ""), key);
+  });
 }
 
 function businessRank(email: string) {

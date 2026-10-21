@@ -11,6 +11,8 @@ function createPool() {
   // pg connects lazily, so a missing URL only fails when a query runs (builds without a database still work).
   if (!process.env.DATABASE_URL) console.warn("DATABASE_URL is not set. Run `vercel env pull` to fetch it.");
   const pool = new Pool({ connectionString: process.env.DATABASE_URL && strictSsl(process.env.DATABASE_URL), max: 10, idleTimeoutMillis: 5_000 });
+  // An idle connection dropping (network blip, Neon scaling to zero) must not crash the process; the pool replaces it.
+  pool.on("error", (e) => console.warn(`Idle database connection closed: ${e.message}`));
   attachDatabasePool(pool);
   return pool;
 }
