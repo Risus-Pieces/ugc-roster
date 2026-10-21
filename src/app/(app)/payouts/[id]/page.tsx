@@ -50,7 +50,7 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
   return (
     <>
       <div className="mb-3">
-        <Link href={`/payouts?period=${s.periodStart.slice(0, 7)}`} className="text-[12px] text-ink-2 hover:text-ink">
+        <Link href={`/payouts?period=${s.periodStart.slice(0, 7)}`} className="text-[13px] text-ink-2 hover:text-ink">
           ← Statements
         </Link>
       </div>
@@ -64,13 +64,13 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
             </span>
             <Badge tone={STATUS_TONE[s.status]}>{s.status}</Badge>
             {c && (
-              <Link href={`/creators/${c.id}`} className="text-[13px] underline">
+              <Link href={`/creators/${c.id}`} className="text-[14px] underline">
                 Creator profile
               </Link>
             )}
           </span>
         }
-        actions={<div className="num text-[28px] font-medium">{usd2(s.totalCents)}</div>}
+        actions={<div className="font-display text-[28px] font-medium tabular-nums">{usd2(s.totalCents)}</div>}
       />
 
       <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_340px]">
@@ -78,10 +78,10 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
           <div className="flex flex-wrap gap-2">
             {subtotals.map((x) => (
               <div key={x.k} className="rounded-md border border-line bg-panel px-3 py-2">
-                <div className="text-[11px] text-muted">
+                <div className="text-[12px] text-muted">
                   {KIND[x.k]} <span className="num">×{x.n}</span>
                 </div>
-                <div className={cx("num text-[15px] font-medium", x.cents < 0 && "text-loss")}>{usd2(x.cents)}</div>
+                <div className={cx("num text-[16px] font-medium", x.cents < 0 && "text-loss")}>{usd2(x.cents)}</div>
               </div>
             ))}
           </div>
@@ -104,13 +104,13 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
                           <span className="inline-flex items-center gap-1.5">
                             <PlatformTag platform={p.platform} />
                             {p.url ? (
-                              <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-[12px] text-ink-2 hover:text-ink">
+                              <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-[13px] text-ink-2 hover:text-ink">
                                 Open ↗
                               </a>
                             ) : (
-                              <span className="text-[12px] text-muted">no link</span>
+                              <span className="text-[13px] text-muted">no link</span>
                             )}
-                            {p.removedAt && <span className="text-[12px] text-loss">removed</span>}
+                            {p.removedAt && <span className="text-[13px] text-loss">removed</span>}
                           </span>
                         ) : (
                           <span className="text-muted">—</span>
@@ -124,16 +124,16 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
                 })}
                 <tr className="border-t-2 border-line-strong">
                   <Td className="font-medium">Total</Td>
-                  <Td className="text-[12px] text-muted">Totals never go below $0.</Td>
+                  <Td className="text-[13px] text-muted">Totals never go below $0.</Td>
                   <Td />
-                  <Td right mono className="text-[15px] font-medium">
+                  <Td right mono className="text-[16px] font-medium">
                     {usd2(s.totalCents)}
                   </Td>
                 </tr>
               </Table>
             )}
           </Card>
-          <p className="text-[12px] text-muted">
+          <p className="text-[13px] text-muted">
             Per-view pay uses credible views (bots and paid boosts removed) when each video&apos;s view window closes. Caps apply per video, then per month.{" "}
             <Link href="/payouts/rate-cards" className="underline">
               Rate card
@@ -143,13 +143,13 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
 
         <div className="space-y-4">
           <Card title="Payment">
-            <ol className="mb-4 space-y-2 text-[13px]">
+            <ol className="mb-4 space-y-2 text-[14px]">
               <Step done label="Drafted" at={s.createdAt} />
               <Step done={Boolean(s.approvedAt)} label="Approved" at={s.approvedAt} />
               <Step done={s.status === "paid"} label={s.status === "failed" ? "Payment failed" : "Paid"} at={s.paidAt} failed={s.status === "failed"} />
             </ol>
 
-            <dl className="mb-4 space-y-1.5 border-t border-line pt-3 text-[13px]">
+            <dl className="mb-4 space-y-1.5 border-t border-line pt-3 text-[14px]">
               <Row label="Payout method">
                 {methodOk && prov ? (
                   <span className="inline-flex items-center gap-1.5">
@@ -171,7 +171,7 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
               </Row>
               {s.payoutRef && (
                 <Row label="Reference">
-                  <span className="num text-[12px]">{s.payoutRef}</span>
+                  <span className="num text-[13px]">{s.payoutRef}</span>
                 </Row>
               )}
             </dl>
@@ -184,7 +184,7 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
                     Approve {usd2(s.totalCents)}
                   </SubmitButton>
                 </ActionForm>
-                <p className="mt-2 text-[12px] text-muted">Approving locks this amount. No money moves until you press Pay.</p>
+                <p className="mt-2 text-[13px] text-muted">Approving locks this amount. No money moves until you press Pay.</p>
               </>
             )}
 
@@ -204,7 +204,7 @@ async function StatementPageContent({ params }: { params: Promise<{ id: string }
                     {prov ? ` via ${prov.name}` : ""}
                   </SubmitButton>
                 </ActionForm>
-                <p className="mt-2 text-[12px] text-muted">
+                <p className="mt-2 text-[13px] text-muted">
                   {prov?.live ? `Sends real money through ${prov.name}. Retries are safe: the payout is keyed to this statement, so it can't be paid twice.` : `${prov?.name ?? "The provider"} isn't connected (${prov?.env ?? "credentials missing"}), so this will be recorded as a simulated payment. No money moves.`}
                 </p>
               </>
@@ -243,7 +243,7 @@ function Step({ done, label, at, failed }: { done: boolean; label: string; at: D
     <li className="flex items-center gap-2">
       <span className={cx("h-2.5 w-2.5 rounded-full border", failed ? "border-loss bg-loss" : done ? "border-profit bg-profit" : "border-line-strong bg-panel")} />
       <span className={cx("flex-1", !done && !failed && "text-muted")}>{label}</span>
-      <span className="num text-[12px] text-muted">{at ? dateTime(at) : "—"}</span>
+      <span className="num text-[13px] text-muted">{at ? dateTime(at) : "—"}</span>
     </li>
   );
 }

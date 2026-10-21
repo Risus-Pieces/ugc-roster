@@ -39,7 +39,7 @@ export function ActionForm({
   return (
     <form ref={ref} action={formAction} className={className}>
       {children}
-      {state?.message && <p className={cx("mt-2 text-[12px]", state.ok ? "text-profit" : "text-loss")}>{state.message}</p>}
+      {state?.message && <p className={cx("mt-2 text-[13px]", state.ok ? "text-profit" : "text-loss")}>{state.message}</p>}
     </form>
   );
 }
@@ -85,7 +85,7 @@ export function KeepForm({
     >
       <Pending value={pending}>{children}</Pending>
       {state?.message && (
-        <p role="status" className={cx("mt-2 text-[12px]", state.ok ? "text-profit" : "text-loss")}>
+        <p role="status" className={cx("mt-2 text-[13px]", state.ok ? "text-profit" : "text-loss")}>
           {state.message}
         </p>
       )}

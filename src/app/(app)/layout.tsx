@@ -42,7 +42,7 @@ export default function AppLayout({ children }: LayoutProps<"/">) {
         <details className="planks border-b-4 border-wood-dark px-4 py-3 md:hidden">
           <summary className="flex cursor-pointer list-none items-center justify-between">
             <Brand />
-            <span className="font-display text-[14px] text-on-wood">Menu</span>
+            <span className="font-display text-[15px] text-on-wood">Menu</span>
           </summary>
           <div className="pt-3">{nav}</div>
         </details>

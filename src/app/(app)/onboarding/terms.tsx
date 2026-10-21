@@ -18,7 +18,7 @@ export function TermsSummary({ t }: { t: ContractTerms }) {
     ["Term", `${t.termMonths} mo`],
   ];
   return (
-    <dl className="flex flex-wrap gap-x-4 gap-y-1 text-[12px]">
+    <dl className="flex flex-wrap gap-x-4 gap-y-1 text-[13px]">
       {items.map(([k, v]) => (
         <div key={k} className="flex gap-1">
           <dt className="text-muted">{k}</dt>

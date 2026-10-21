@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
-import { Pixelify_Sans, VT323, Nunito } from "next/font/google";
+import { Pixelify_Sans, Nunito } from "next/font/google";
 import "./globals.css";
 
+// Pixel face for page titles and headline numbers; a rounded sans for everything you read.
 const display = Pixelify_Sans({ variable: "--font-display-face", subsets: ["latin"] });
 const body = Nunito({ variable: "--font-body", subsets: ["latin"] });
-const data = VT323({ variable: "--font-data", subsets: ["latin"], weight: "400" });
 
 export const metadata: Metadata = {
   title: { default: "Roster", template: "%s · Roster" },
@@ -13,7 +13,7 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html lang="en" className={`${display.variable} ${body.variable} ${data.variable} h-full antialiased`}>
+    <html lang="en" className={`${display.variable} ${body.variable} h-full antialiased`}>
       <body className="min-h-full">{children}</body>
     </html>
   );

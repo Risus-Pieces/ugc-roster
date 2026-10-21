@@ -72,7 +72,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
 
   return (
     <>
-      <div className="mb-2 text-[12px]">
+      <div className="mb-2 text-[13px]">
         <Link href="/creators" className="text-muted hover:text-ink">
           ← Creators
         </Link>
@@ -81,7 +81,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
         avatar={<Villager seed={creator.id} scale={5} />}
         title={creator.name}
         description={
-          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+          <span className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[14px]">
             <StageBadge stage={creator.stage} />
             <span className="num text-muted">{daysInStage}d in stage</span>
             {creator.country && <span className="num">{creator.country}</span>}
@@ -138,7 +138,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
             )}
           </Card>
 
-          <Card title="Score" action={<span className="text-[12px] text-muted">typical views, not the one viral hit</span>}>
+          <Card title="Score" action={<span className="text-[13px] text-muted">typical views, not the one viral hit</span>}>
             {scores.length === 0 ? (
               <p className="text-ink-2">Not scored yet. Scores are computed when discovery or a sync pulls in their posts.</p>
             ) : (
@@ -154,7 +154,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
             <ViewsChart posts={chartPosts} />
           </Card>
 
-          <Card title="Campaign posts" action={<span className="text-[12px] text-muted">latest 20 · credible views at day 1 / 7 / 14</span>} flush>
+          <Card title="Campaign posts" action={<span className="text-[13px] text-muted">latest 20 · credible views at day 1 / 7 / 14</span>} flush>
             {campaignPosts.length === 0 ? (
               <p className="p-4 text-ink-2">{onRoster ? "No campaign posts yet. They show up after the next sync." : "Campaign posts appear once they're on the roster."}</p>
             ) : (
@@ -209,7 +209,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
             )}
           </Card>
 
-          <Card title="Messages" action={<span className="num text-[12px] text-muted">{thread.length}</span>} flush>
+          <Card title="Messages" action={<span className="num text-[13px] text-muted">{thread.length}</span>} flush>
             {thread.length === 0 ? (
               <div className="p-4">
                 <Empty title="No messages yet">
@@ -224,7 +224,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
               <ul className="divide-y divide-line">
                 {thread.map((m) => (
                   <li key={m.id} className={cx("px-4 py-3", m.direction === "in" && "bg-sunken/50")}>
-                    <div className="flex flex-wrap items-center gap-2 text-[12px]">
+                    <div className="flex flex-wrap items-center gap-2 text-[13px]">
                       <span className="font-medium">{m.direction === "in" ? `← ${creator.name.split(" ")[0]}` : "→ You"}</span>
                       <MsgStatusBadge status={m.status} />
                       <ClassBadge c={m.classification} />
@@ -233,12 +233,12 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
                     {m.subject && <div className="mt-1 font-medium">{m.subject}</div>}
                     <p className="mt-1 whitespace-pre-wrap text-ink-2">{m.body}</p>
                     {m.direction === "in" && m.status === "received" && (
-                      <Link href="/outreach" className="mt-1 inline-block text-[12px] text-tally hover:underline">
+                      <Link href="/outreach" className="mt-1 inline-block text-[13px] text-tally hover:underline">
                         Answer in Outreach →
                       </Link>
                     )}
                     {m.status === "draft" && (
-                      <Link href="/outreach?tab=compose" className="mt-1 inline-block text-[12px] text-ink hover:underline">
+                      <Link href="/outreach?tab=compose" className="mt-1 inline-block text-[13px] text-ink hover:underline">
                         Edit and send in Outreach →
                       </Link>
                     )}
@@ -264,7 +264,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
                 <SubmitButton pendingText="Moving…">Move</SubmitButton>
               </div>
             </ActionForm>
-            <p className="mt-2 text-[12px] text-muted">
+            <p className="mt-2 text-[13px] text-muted">
               Moving to <b className="font-medium text-ink-2">trial</b> starts product access and the warm-up, and automatically creates their contract and a tax form request (W-9 for US, W-8BEN
               otherwise). Moving to <b className="font-medium text-ink-2">active</b> qualifies their referrer&apos;s bonus.
             </p>
@@ -283,17 +283,17 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
           <Card
             title="Onboarding"
             action={
-              <Link href="/onboarding" className="text-[12px] text-ink-2 hover:text-ink">
+              <Link href="/onboarding" className="text-[13px] text-ink-2 hover:text-ink">
                 Onboarding →
               </Link>
             }
           >
-            <dl className="space-y-2.5 text-[13px]">
+            <dl className="space-y-2.5 text-[14px]">
               <Row label="Contract">
                 {contract ? (
                   <span className="flex items-center gap-2">
                     <Badge tone={CONTRACT_TONE[contract.status]}>{contract.status}</Badge>
-                    <span className="num text-[12px] text-muted">
+                    <span className="num text-[13px] text-muted">
                       {contract.signedAt ? `signed ${day(contract.signedAt)}` : contract.sentAt ? `sent ${day(contract.sentAt)}` : `drafted ${day(contract.createdAt)}`}
                     </span>
                   </span>
@@ -304,7 +304,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
               <Row label="Tax form">
                 {tax ? (
                   <span className="flex items-center gap-2">
-                    <span className="num text-[12px]">{tax.formType}</span>
+                    <span className="num text-[13px]">{tax.formType}</span>
                     <Badge tone={TAX_TONE[tax.status]}>{tax.status}</Badge>
                   </span>
                 ) : (
@@ -318,7 +318,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
                   <span className="num text-profit">done · {warm.targetDays} days</span>
                 ) : (
                   <span className="w-32">
-                    <span className="num text-[12px]">
+                    <span className="num text-[13px]">
                       day {warm.day} of {warm.targetDays}
                     </span>
                     <Meter value={warm.day} max={warm.targetDays} tone="tally" />
@@ -326,16 +326,16 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
                 )}
               </Row>
               <Row label="Product access">
-                <span className="num text-[12px]">{creator.productAccessAt ? day(creator.productAccessAt) : "—"}</span>
+                <span className="num text-[13px]">{creator.productAccessAt ? day(creator.productAccessAt) : "—"}</span>
               </Row>
               <Row label="Payout">
-                <span className="text-[12px]">{creator.payoutProvider ?? <span className="text-muted">not set</span>}</span>
+                <span className="text-[13px]">{creator.payoutProvider ?? <span className="text-muted">not set</span>}</span>
               </Row>
             </dl>
           </Card>
 
           <Card title="Codes and links">
-            <dl className="space-y-2.5 text-[13px]">
+            <dl className="space-y-2.5 text-[14px]">
               <Row label="Promo code">{creator.promoCode ? <span className="num font-medium">{creator.promoCode}</span> : <span className="text-muted">assigned at trial</span>}</Row>
               <LinkRow label="Tracking link" path={creator.promoCode ? `/r/${creator.promoCode}` : null} hint="Put in bio — every click is counted" plain />
               <LinkRow label="Referral link" path={`/join/${creator.referralCode}`} hint="For recruiting friends" />
@@ -344,7 +344,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
           </Card>
 
           <Card title="Campaigns and referrals">
-            <div className="space-y-2.5 text-[13px]">
+            <div className="space-y-2.5 text-[14px]">
               <div className="flex flex-wrap gap-1">
                 {campRows.length ? (
                   campRows.map((c) => (
@@ -373,13 +373,13 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
 
           {callRows.length > 0 && (
             <Card title="Calls">
-              <ul className="space-y-1.5 text-[13px]">
+              <ul className="space-y-1.5 text-[14px]">
                 {callRows.map((c) => (
                   <li key={c.id} className="flex items-center justify-between gap-2">
                     <span className="num">{dateTime(c.scheduledAt)}</span>
                     <span className="flex items-center gap-2">
                       {upcoming.includes(c) && c.link && (
-                        <a href={c.link} target="_blank" rel="noreferrer" className="text-[12px] hover:underline">
+                        <a href={c.link} target="_blank" rel="noreferrer" className="text-[13px] hover:underline">
                           link
                         </a>
                       )}
@@ -412,16 +412,16 @@ function ScoreBlock({ s }: { s: CreatorScore }) {
       <div className="mb-2 flex flex-wrap items-center gap-2">
         <PlatformTag platform={s.platform} />
         <VerdictBadge verdict={s.authenticityVerdict} score={s.authenticityScore} />
-        <span className="num text-[12px] text-muted">
+        <span className="num text-[13px] text-muted">
           {s.sampleSize > 0 ? `${s.sampleSize} posts` : "From imported averages"} · scored {relative(s.computedAt)}
         </span>
       </div>
       <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-4 xl:grid-cols-7">
         {items.map((it) => (
           <div key={it.label}>
-            <dt className="text-[11px] text-muted">{it.label}</dt>
-            <dd className={cx("num text-[16px]", it.strong ? "font-medium" : "text-ink-2")}>{it.value}</dd>
-            {it.hint && <dd className={cx("num text-[11px]", it.label === "Max views" && dep >= 10 ? "text-tally" : "text-muted")}>{it.hint}</dd>}
+            <dt className="text-[12px] text-muted">{it.label}</dt>
+            <dd className={cx("num text-[17px]", it.strong ? "font-medium" : "text-ink-2")}>{it.value}</dd>
+            {it.hint && <dd className={cx("num text-[12px]", it.label === "Max views" && dep >= 10 ? "text-tally" : "text-muted")}>{it.hint}</dd>}
           </div>
         ))}
       </dl>
@@ -449,7 +449,7 @@ function EconBlock({ e }: { e: Awaited<ReturnType<typeof creatorEconomics>>[numb
         <ConfidenceBadge level={e.confidence} />
       </div>
       <MarginBar revenue={e.revenuePer1kCents} cost={d.costPer1kCents} scale={scale} low={e.revenuePer1kLow} high={e.revenuePer1kHigh} />
-      <dl className="grid grid-cols-3 gap-2 text-[12px]">
+      <dl className="grid grid-cols-3 gap-2 text-[13px]">
         <div>
           <dt className="text-muted">Revenue / 1K</dt>
           <dd className="num">{usd2(e.revenuePer1kCents)}</dd>
@@ -475,7 +475,7 @@ function EconBlock({ e }: { e: Awaited<ReturnType<typeof creatorEconomics>>[numb
           <dd className="num">{usd(e.paidCents)}</dd>
         </div>
       </dl>
-      <ul className="list-disc space-y-0.5 pl-4 text-[12px] text-ink-2">
+      <ul className="list-disc space-y-0.5 pl-4 text-[13px] text-ink-2">
         {d.reasons.map((r) => (
           <li key={r}>{r}</li>
         ))}
@@ -487,7 +487,7 @@ function EconBlock({ e }: { e: Awaited<ReturnType<typeof creatorEconomics>>[numb
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3">
-      <dt className="shrink-0 text-[12px] text-muted">{label}</dt>
+      <dt className="shrink-0 text-[13px] text-muted">{label}</dt>
       <dd className="min-w-0 text-right">{children}</dd>
     </div>
   );
@@ -496,8 +496,8 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 function LinkRow({ label, path, hint, plain }: { label: string; path: string | null; hint: string; plain?: boolean }) {
   return (
     <div>
-      <dt className="text-[12px] text-muted">{label}</dt>
-      <dd className="num break-all text-[12px]">
+      <dt className="text-[13px] text-muted">{label}</dt>
+      <dd className="num break-all text-[13px]">
         {!path ? (
           <span className="text-muted">available once they have a promo code</span>
         ) : plain ? (
@@ -508,7 +508,7 @@ function LinkRow({ label, path, hint, plain }: { label: string; path: string | n
           </a>
         )}
       </dd>
-      <dd className="text-[11px] text-muted">{hint}</dd>
+      <dd className="text-[12px] text-muted">{hint}</dd>
     </div>
   );
 }

@@ -15,12 +15,12 @@ export function CheckConnections() {
         <button type="submit" disabled={pending} className={cx(btn, "px-btn")}>
           {pending ? "Checking…" : "Check connections"}
         </button>
-        <span className="text-[12px] text-muted">Makes a read-only call to each service. Nothing is sent.</span>
+        <span className="text-[13px] text-muted">Makes a read-only call to each service. Nothing is sent.</span>
       </form>
       {state && (
         <ul className="mt-3 divide-y divide-line border-2 border-line bg-field">
           {state.checks.map((c) => (
-            <li key={c.name} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 text-[13px]">
+            <li key={c.name} className="flex flex-wrap items-start gap-x-3 gap-y-1 px-3 py-2 text-[14px]">
               <Badge tone={TONE[c.status]} className="mt-0.5">
                 {LABEL[c.status]}
               </Badge>

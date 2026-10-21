@@ -69,9 +69,9 @@ export function ImportForm({ campaigns }: { campaigns: { id: string; name: strin
         </label>
         <label className="block md:col-span-2">
           <span className={label}>…or paste rows (with a header row)</span>
-          <textarea name="csv" rows={4} className={cx(input, "font-mono text-[12px]")} placeholder={"Username,Followers,Email,Profile URL\n@spicysam,8.2K,sam@example.com,https://www.tiktok.com/@spicysam"} />
+          <textarea name="csv" rows={4} className={cx(input, "font-mono text-[13px]")} placeholder={"Username,Followers,Email,Profile URL\n@spicysam,8.2K,sam@example.com,https://www.tiktok.com/@spicysam"} />
         </label>
-        <label className="flex items-center gap-2 text-[13px] md:col-span-2">
+        <label className="flex items-center gap-2 text-[14px] md:col-span-2">
           <input type="checkbox" name="onlyInBand" defaultChecked />
           Only import creators inside the campaign&apos;s follower range
         </label>
@@ -82,13 +82,13 @@ export function ImportForm({ campaigns }: { campaigns: { id: string; name: strin
           <button type="submit" name="intent" value="import" disabled={pending || !plan?.readyCount} className={btnPrimary}>
             {pending ? "Working…" : plan?.readyCount ? `Import ${plan.readyCount} creators` : "Import"}
           </button>
-          <span className="text-[12px] text-muted">Preview first — nothing is saved until you import.</span>
+          <span className="text-[13px] text-muted">Preview first — nothing is saved until you import.</span>
         </div>
       </form>
 
-      {state?.message && <p className={cx("text-[13px] font-bold", state.ok ? "text-profit" : "text-loss")}>{state.message}</p>}
+      {state?.message && <p className={cx("text-[14px] font-bold", state.ok ? "text-profit" : "text-loss")}>{state.message}</p>}
       {state?.created ? (
-        <p className="text-[13px]">
+        <p className="text-[14px]">
           <Link href="/outreach?tab=compose" className="font-bold underline">
             Write openers for them →
           </Link>
@@ -97,8 +97,8 @@ export function ImportForm({ campaigns }: { campaigns: { id: string; name: strin
 
       {plan && (
         <div className="grid gap-4 lg:grid-cols-2">
-          <div className="border-2 border-line bg-field p-3 text-[13px]">
-            <div className="mb-2 font-display text-[15px]">Columns we matched</div>
+          <div className="border-2 border-line bg-field p-3 text-[14px]">
+            <div className="mb-2 font-display text-[16px]">Columns we matched</div>
             <ul className="space-y-0.5">
               {Object.entries(FIELD_LABEL).map(([f, l]) => (
                 <li key={f} className="flex justify-between gap-3">
@@ -115,8 +115,8 @@ export function ImportForm({ campaigns }: { campaigns: { id: string; name: strin
               {plan.skipped.length > 0 && <Badge tone="loss">{plan.skipped.length} skipped</Badge>}
             </div>
           </div>
-          <div className="border-2 border-line bg-field p-3 text-[13px]">
-            <div className="mb-2 font-display text-[15px]">First creators</div>
+          <div className="border-2 border-line bg-field p-3 text-[14px]">
+            <div className="mb-2 font-display text-[16px]">First creators</div>
             {plan.sample.length ? (
               <ul className="space-y-1">
                 {plan.sample.map((r) => (
@@ -133,7 +133,7 @@ export function ImportForm({ campaigns }: { campaigns: { id: string; name: strin
             )}
           </div>
           {(plan.skipped.length > 0 || plan.duplicates.length > 0) && (
-            <details className="border-2 border-line bg-field p-3 text-[13px] lg:col-span-2">
+            <details className="border-2 border-line bg-field p-3 text-[14px] lg:col-span-2">
               <summary className="cursor-pointer font-bold">Why some rows won&apos;t be imported</summary>
               <ul className="mt-2 max-h-56 space-y-0.5 overflow-y-auto">
                 {plan.duplicates.slice(0, 100).map((d) => (

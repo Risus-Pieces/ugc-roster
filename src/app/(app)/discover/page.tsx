@@ -3,7 +3,7 @@ import Form from "next/form";
 import { connection } from "next/server";
 import { desc, inArray } from "drizzle-orm";
 import { db, campaigns, campaignCreators, creators, creatorAccounts, PLATFORMS, type Platform } from "@/db";
-import { Badge, Card, Empty, Field, Meter, Notice, PageHeader, PlatformTag, StageBadge, Table, Tabs, Td, btn, btnSm, cx, input, label } from "@/components/ui";
+import { Badge, Card, Empty, Field, Meter, Notice, PageHeader, Pager, PlatformTag, StageBadge, Table, Tabs, Td, btn, btnSm, cx, input, label, pageParam } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/client";
 import { discoveryProviders, findLookalikes } from "@/lib/services/discovery";
 import { latestScores } from "@/lib/services/common";
@@ -16,6 +16,7 @@ import { ImportForm } from "./import-form";
 
 export const metadata = { title: "Discover" };
 
+const RESULTS_PAGE = 50;
 const PLATFORM_NAME: Record<Platform, string> = { tiktok: "TikTok", instagram: "Instagram", youtube: "YouTube" };
 
 // Bios carry contact emails ("collabs: maya [at] gmail [dot] com"), which leak into shared terms.
@@ -65,7 +66,7 @@ async function ImportTab() {
         <ImportForm campaigns={options} />
       </Card>
       <Card title="Where to get a list">
-        <div className="space-y-3 text-[13px] text-ink-2">
+        <div className="space-y-3 text-[14px] text-ink-2">
           <p>
             Export from a creator database during its free trial: <b>Modash</b> (14 days), <b>Influencers.club</b>, <b>SocialCat</b> (7 days), <b>Heepsy</b> or <b>Tokfluence</b>. Filter to TikTok or Instagram, 2K–20K followers, your niche, and the US.
           </p>
@@ -92,7 +93,7 @@ async function CampaignsTab({ sp }: { sp: SP }) {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
-        <Card title="Campaigns" action={<span className="num text-[12px] text-muted">{all.length}</span>} flush>
+        <Card title="Campaigns" action={<span className="num text-[13px] text-muted">{all.length}</span>} flush>
           {all.length === 0 ? (
             <div className="p-4">
               <Empty title="No campaigns yet">Create one with a niche and a few keywords, then run discovery to pull in creators.</Empty>
@@ -110,7 +111,7 @@ async function CampaignsTab({ sp }: { sp: SP }) {
                         <Link href={`/discover?campaign=${c.id}`} className="font-medium hover:underline">
                           {c.name}
                         </Link>
-                        <span className="text-[12px] text-muted">{c.niche}</span>
+                        <span className="text-[13px] text-muted">{c.niche}</span>
                         {c.status !== "active" && <Badge>{c.status}</Badge>}
                       </div>
                       <div className="mt-1 flex flex-wrap gap-1">
@@ -118,7 +119,7 @@ async function CampaignsTab({ sp }: { sp: SP }) {
                           <Badge key={k}>{k}</Badge>
                         ))}
                       </div>
-                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-2">
+                      <div className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
                         <span className="flex flex-wrap gap-x-2">
                           {discoveryProviders(c.platforms).map((p) => (
                             <span key={p.platform} className="flex items-center gap-1">
@@ -166,7 +167,7 @@ function NewCampaignCard() {
           <legend className={label}>Platforms</legend>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             {PLATFORMS.map((p) => (
-              <label key={p} className="flex items-center gap-1.5 text-[13px]">
+              <label key={p} className="flex items-center gap-1.5 text-[14px]">
                 <input type="checkbox" name="platforms" value={p} defaultChecked />
                 {PLATFORM_NAME[p]}
               </label>
@@ -181,7 +182,7 @@ function NewCampaignCard() {
             <input type="number" name="maxFollowers" defaultValue={20000} min={0} step={100} className={cx(input, "num")} />
           </Field>
         </div>
-        <p className="text-[12px] text-muted">
+        <p className="text-[13px] text-muted">
           2K–20K is the sweet spot: big enough to get views, small enough to say yes to a fair flat rate.{" "}
           {providers.map((p) => `${PLATFORM_NAME[p.platform]}: ${p.live ? p.name : "demo data"}`).join(" · ")}. Only YouTube has official keyword search (set YOUTUBE_API_KEY).
         </p>
@@ -219,10 +220,12 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
     followers: (r) => r.followers,
     base: (r) => r.s?.suggestedBaseCents ?? -1,
   };
-  const shown = rows
+  const filtered = rows
     .filter((r) => !hideFake || r.s?.authenticityVerdict !== "fail")
     .filter((r) => !hideNoEmail || r.c.email)
     .sort((a, b) => value[sort](b) - value[sort](a));
+  const page = pageParam(sp.page, filtered.length, RESULTS_PAGE);
+  const shown = filtered.slice((page - 1) * RESULTS_PAGE, page * RESULTS_PAGE);
 
   const href = (patch: Record<string, string | undefined>) => {
     const q = new URLSearchParams();
@@ -259,8 +262,8 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
         </>
       }
       action={
-        <span className="num text-[12px] text-muted">
-          {shown.length} of {rows.length}
+        <span className="num text-[13px] text-muted">
+          {filtered.length} of {rows.length}
         </span>
       }
       flush
@@ -268,7 +271,7 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
       <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
         {chip(hideFake, `Hide likely fake (${fakeCount})`, { fake: hideFake ? undefined : "hide" })}
         {chip(hideNoEmail, `Hide no email (${noEmailCount})`, { noemail: hideNoEmail ? undefined : "hide" })}
-        <span className="ml-auto text-[12px] text-muted">Max views is shown for context only — pay and ranking use median and worst 5.</span>
+        <span className="ml-auto text-[13px] text-muted">Max views is shown for context only — pay and ranking use median and worst 5.</span>
       </div>
       {rows.length === 0 ? (
         <div className="p-4">
@@ -276,7 +279,7 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
             Run discovery above to search {campaign.platforms.map((p) => PLATFORM_NAME[p]).join(", ")} for “{campaign.keywords.join("”, “")}”.
           </Empty>
         </div>
-      ) : shown.length === 0 ? (
+      ) : filtered.length === 0 ? (
         <div className="p-4">
           <Empty title="Every creator is hidden by the filters">Turn off a filter above to see them.</Empty>
         </div>
@@ -304,7 +307,7 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
                   <Link href={`/creators/${c.id}`} className="whitespace-nowrap font-medium hover:underline">
                     {c.name}
                   </Link>
-                  {c.country && <div className="num text-[11px] text-muted">{c.country}</div>}
+                  {c.country && <div className="num text-[12px] text-muted">{c.country}</div>}
                 </Td>
                 <Td>
                   <Handles accounts={accounts} />
@@ -322,7 +325,7 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
                   {s ? (
                     <>
                       <span className="text-ink-2">{compact(s.maxViews)}</span>
-                      <div className={cx("whitespace-nowrap text-[11px]", dep >= 10 ? "text-tally" : "text-muted")} title="Max views ÷ median views — how much one hit inflates their profile">
+                      <div className={cx("whitespace-nowrap text-[12px]", dep >= 10 ? "text-tally" : "text-muted")} title="Max views ÷ median views — how much one hit inflates their profile">
                         {dep.toFixed(1)}× median
                       </div>
                     </>
@@ -350,6 +353,7 @@ async function Results({ campaign, creatorIds, sp }: { campaign: typeof campaign
           })}
         </Table>
       )}
+      <Pager page={page} pageSize={RESULTS_PAGE} total={filtered.length} href={(n) => href({ page: n > 1 ? String(n) : undefined })} />
     </Card>
   );
 }
@@ -388,7 +392,7 @@ async function LookalikesTab({ sp }: { sp: SP }) {
       <Card
         title="Seed creators"
         action={
-          <span className="num text-[12px] text-muted">
+          <span className="num text-[13px] text-muted">
             {r.seeds.length} of {roster.length}
           </span>
         }
@@ -401,7 +405,7 @@ async function LookalikesTab({ sp }: { sp: SP }) {
         ) : (
           <Form action="/discover" scroll={false} key={[...seedIds].join(",")}>
             <input type="hidden" name="tab" value="lookalikes" />
-            <p className="border-b border-line px-4 py-2 text-[12px] text-muted">
+            <p className="border-b border-line px-4 py-2 text-[13px] text-muted">
               {chosen.length ? "Your picks." : "Default: your 10 roster creators with the best typical views."} Change the ticks to match a different group.
             </p>
             <ul className="max-h-[520px] divide-y divide-line overflow-y-auto">
@@ -411,7 +415,7 @@ async function LookalikesTab({ sp }: { sp: SP }) {
                     <input type="checkbox" name="seed" value={c.id} defaultChecked={seedIds.has(c.id)} />
                     <span className="min-w-0 flex-1 truncate">{c.name}</span>
                     <StageBadge stage={c.stage} />
-                    <span className="num w-12 text-right text-[12px] text-ink-2">{scores.get(c.id) ? compact(scores.get(c.id)!.medianViews) : "—"}</span>
+                    <span className="num w-12 text-right text-[13px] text-ink-2">{scores.get(c.id) ? compact(scores.get(c.id)!.medianViews) : "—"}</span>
                   </label>
                 </li>
               ))}
@@ -461,14 +465,14 @@ async function LookalikesTab({ sp }: { sp: SP }) {
                   Create campaign from keywords
                 </SubmitButton>
               </div>
-              <p className="text-[12px] text-muted">
+              <p className="text-[13px] text-muted">
                 Searches {seedPlatforms.length ? seedPlatforms.map((p) => PLATFORM_NAME[p]).join(", ") : "TikTok, Instagram"} in the 2K–20K band. Run discovery on it next.
               </p>
             </ActionForm>
           )}
         </Card>
 
-        <Card title="Lookalike prospects" action={<span className="num text-[12px] text-muted">{r.results.length}</span>} flush>
+        <Card title="Lookalike prospects" action={<span className="num text-[13px] text-muted">{r.results.length}</span>} flush>
           {r.results.length === 0 ? (
             <div className="p-4">
               <Empty title="No scored prospects to compare">Run discovery on a campaign to pull in prospects, then check back.</Empty>
@@ -517,7 +521,7 @@ async function LookalikesTab({ sp }: { sp: SP }) {
                   <Td>
                     <div className="flex w-28 items-center gap-2">
                       <Meter value={x.similarity} max={1} tone={x.similarity >= 0.6 ? "profit" : "ink"} />
-                      <span className="num w-9 text-right text-[12px]">{pct(x.similarity, 0)}</span>
+                      <span className="num w-9 text-right text-[13px]">{pct(x.similarity, 0)}</span>
                     </div>
                   </Td>
                   <Td>

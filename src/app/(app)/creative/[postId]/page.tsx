@@ -25,7 +25,7 @@ export default async function HookPostPage({ params }: { params: Promise<{ postI
 
   return (
     <>
-      <div className="mb-2 text-[12px]">
+      <div className="mb-2 text-[13px]">
         <Link href="/creative" className="text-ink-2 hover:text-ink">
           ← Hook bank
         </Link>
@@ -33,7 +33,7 @@ export default async function HookPostPage({ params }: { params: Promise<{ postI
       <PageHeader
         title={p.hookText ?? (p.caption ?? "Untitled video").split("\n")[0]}
         description={
-          <span className="flex flex-wrap items-center gap-2 text-[13px]">
+          <span className="flex flex-wrap items-center gap-2 text-[14px]">
             {p.source === "competitor" ? <Badge tone="info">competitor</Badge> : creator ? <Link href={`/creators/${creator.id}`} className="hover:underline">{creator.name}</Link> : null}
             {p.source === "competitor" && <span>{who}</span>}
             <PlatformTag platform={p.platform} />
@@ -49,7 +49,7 @@ export default async function HookPostPage({ params }: { params: Promise<{ postI
         <div className="mx-auto w-full max-w-[220px] space-y-3">
           <VerticalFrame hook={p.hookText ?? (p.caption ?? "").split("\n")[0]} views={p.views} meta={`${who} · ${p.format ?? "untagged"}`} />
           {p.url && (
-            <a href={p.url} target="_blank" rel="noreferrer noopener" className="block text-center text-[12px] text-info hover:underline">
+            <a href={p.url} target="_blank" rel="noreferrer noopener" className="block text-center text-[13px] text-info hover:underline">
               Open original ↗
             </a>
           )}
@@ -67,7 +67,7 @@ export default async function HookPostPage({ params }: { params: Promise<{ postI
           <div className="grid gap-4 lg:grid-cols-[1fr_300px]">
             <div className="min-w-0 space-y-4">
               <Card title="Transcript">
-                {p.transcript ? <p className="whitespace-pre-line break-words leading-relaxed">{p.transcript}</p> : <p className="text-[13px] text-muted">No transcript for this video.</p>}
+                {p.transcript ? <p className="whitespace-pre-line break-words leading-relaxed">{p.transcript}</p> : <p className="text-[14px] text-muted">No transcript for this video.</p>}
               </Card>
               {p.caption && (
                 <Card title="Caption">
@@ -78,7 +78,7 @@ export default async function HookPostPage({ params }: { params: Promise<{ postI
 
             <div className="space-y-4">
               <Card title="Write variations">
-                <p className="mb-3 text-[13px] text-ink-2">Rewrites that keep the hook mechanism, format and pacing — with new wording and a new scenario, never a word-for-word copy.</p>
+                <p className="mb-3 text-[14px] text-ink-2">Rewrites that keep the hook mechanism, format and pacing — with new wording and a new scenario, never a word-for-word copy.</p>
                 <ActionForm action={writeVariationsAction}>
                   <input type="hidden" name="postId" value={p.id} />
                   <div className="flex items-end gap-2">
@@ -101,7 +101,7 @@ export default async function HookPostPage({ params }: { params: Promise<{ postI
 
               {priorBreakouts.length > 0 && (
                 <Card title="Variations already written" flush>
-                  <ul className="divide-y divide-line text-[13px]">
+                  <ul className="divide-y divide-line text-[14px]">
                     {priorBreakouts.map((b) => (
                       <li key={b.id} className="flex items-center justify-between gap-2 px-4 py-2">
                         <span>

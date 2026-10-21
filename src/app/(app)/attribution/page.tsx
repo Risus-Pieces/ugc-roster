@@ -115,7 +115,7 @@ async function Overview({ report }: { report: AttributionReport }) {
       <Card
         title={`Installs, last 21 days · per ${granularity === "hour" ? "3 hours" : "day"}`}
         action={
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-ink-2">
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px] text-ink-2">
             <Legend swatch={<span className="inline-block h-0.5 w-4 bg-ink-2" />}>installs</Legend>
             <Legend swatch={<span className="inline-block w-4 border-t border-dashed border-muted" />}>baseline</Legend>
             <Legend swatch={<span className="inline-block h-2.5 w-3 bg-info opacity-30" />}>lift</Legend>
@@ -129,10 +129,10 @@ async function Overview({ report }: { report: AttributionReport }) {
         }
       >
         <InstallChart buckets={buckets} ticks={ticks} stepMs={step} granularity={granularity} />
-        <p className="mt-2 text-[12px] text-muted">Baseline = median installs in the same hour over the previous 3 weeks. The shaded lift right after a post is credited to the creators who posted, split by their credible views.</p>
+        <p className="mt-2 text-[13px] text-muted">Baseline = median installs in the same hour over the previous 3 weeks. The shaded lift right after a post is credited to the creators who posted, split by their credible views.</p>
       </Card>
 
-      <Card title="Per creator" action={<span className="text-[12px] text-muted">Last {WINDOW_DAYS} days · revenue per 1K with cost per 1K taken out</span>} flush>
+      <Card title="Per creator" action={<span className="text-[13px] text-muted">Last {WINDOW_DAYS} days · revenue per 1K with cost per 1K taken out</span>} flush>
         {rows.length === 0 ? (
           <div className="p-4">
             <Empty title="No campaign posts in this window">Attribution needs campaign posts and install data. Sync creator accounts on the Posts page and connect RevenueCat or App Store Connect in Settings.</Empty>
@@ -189,13 +189,13 @@ async function Overview({ report }: { report: AttributionReport }) {
                   </Td>
                   <Td right mono className="whitespace-nowrap">
                     <div className="font-medium">{usd(r.estimate.revenueCents)}</div>
-                    <div className="text-[11px] text-muted">
+                    <div className="text-[12px] text-muted">
                       {usd(r.estimate.lowCents)}–{usd(r.estimate.highCents)}
                     </div>
                   </Td>
                   <Td>
                     <MarginBar revenue={r.revenuePer1k} cost={cost} scale={scale} low={r.revenuePer1kLow} high={r.revenuePer1kHigh} />
-                    <div className="num mt-0.5 text-[11px] text-muted">
+                    <div className="num mt-0.5 text-[12px] text-muted">
                       {usd2(r.revenuePer1k)} ({usd2(r.revenuePer1kLow)}–{usd2(r.revenuePer1kHigh)}) − {usd2(cost)}
                     </div>
                   </Td>
@@ -203,9 +203,9 @@ async function Overview({ report }: { report: AttributionReport }) {
                     <details className="group">
                       <summary className="cursor-pointer list-none">
                         <ConfidenceBadge level={r.confidence} />
-                        <span className="ml-1 text-[11px] text-muted group-open:hidden">why</span>
+                        <span className="ml-1 text-[12px] text-muted group-open:hidden">why</span>
                       </summary>
-                      <ul className="mt-1.5 max-w-[240px] list-disc space-y-0.5 pl-4 text-[12px] text-ink-2">
+                      <ul className="mt-1.5 max-w-[240px] list-disc space-y-0.5 pl-4 text-[13px] text-ink-2">
                         {r.confidenceReasons.map((x) => (
                           <li key={x}>{x}</li>
                         ))}
@@ -220,7 +220,7 @@ async function Overview({ report }: { report: AttributionReport }) {
       </Card>
 
       <Card title="How the estimate works">
-        <div className="grid gap-4 text-[13px] text-ink-2 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 text-[14px] text-ink-2 md:grid-cols-2 lg:grid-cols-4">
           <Method n="1" title="Link + promo code (direct)">
             Each creator gets their own promo code and a tracking link (<span className="num">/r/CODE</span>). Every install or redemption through them is counted. This is a floor: most viewers just search the App Store and never use either.
           </Method>
@@ -252,7 +252,7 @@ function Method({ n, title, children }: { n: string; title: string; children: Re
   return (
     <div>
       <div className="mb-1 flex items-center gap-2 font-medium text-ink">
-        <span className="num flex h-5 w-5 items-center justify-center rounded bg-sunken text-[11px]">{n}</span>
+        <span className="num flex h-5 w-5 items-center justify-center rounded bg-sunken text-[12px]">{n}</span>
         {title}
       </div>
       <p>{children}</p>
@@ -269,7 +269,7 @@ async function Survey() {
 
   if (b.total === 0)
     return (
-      <Empty title="No survey answers yet" action={<Link href="/settings?tab=integrations" className="text-[13px] font-medium underline">See survey API usage</Link>}>
+      <Empty title="No survey answers yet" action={<Link href="/settings?tab=integrations" className="text-[14px] font-medium underline">See survey API usage</Link>}>
         Add the &ldquo;Where did you hear about us?&rdquo; question to onboarding in your app. It calls <span className="num">/api/survey</span> for the options and posts the answer back.
       </Empty>
     );
@@ -286,7 +286,7 @@ async function Survey() {
         <Card title="Named a creator" flush>
           <BreakdownList items={b.creators.map((x) => ({ key: x.creatorId!, label: x.answer, href: `/creators/${x.creatorId}`, count: x.count }))} max={max} share={share} tone="profit" />
         </Card>
-        <Card title="Generic answers" action={<Link href="/settings?tab=ops" className="text-[12px] text-ink-2 hover:text-ink">Edit options →</Link>} flush>
+        <Card title="Generic answers" action={<Link href="/settings?tab=ops" className="text-[13px] text-ink-2 hover:text-ink">Edit options →</Link>} flush>
           <BreakdownList items={b.generic.map((x) => ({ key: x.answer, label: x.answer, count: x.count }))} max={max} share={share} tone="ink" />
         </Card>
       </div>
@@ -296,12 +296,12 @@ async function Survey() {
         </p>
         <div className="flex flex-wrap gap-1.5">
           {roster.map((c) => (
-            <span key={c.id} className="rounded border border-line bg-sunken px-2 py-0.5 text-[12px]">
+            <span key={c.id} className="rounded border border-line bg-sunken px-2 py-0.5 text-[13px]">
               {c.name}
             </span>
           ))}
           {ops.surveyOptions.map((o) => (
-            <span key={o} className="rounded border border-dashed border-line-strong px-2 py-0.5 text-[12px] text-ink-2">
+            <span key={o} className="rounded border border-dashed border-line-strong px-2 py-0.5 text-[13px] text-ink-2">
               {o}
             </span>
           ))}
@@ -316,7 +316,7 @@ function BreakdownList({ items, max, share, tone }: { items: { key: string; labe
   return (
     <ul className="divide-y divide-line">
       {items.map((x) => (
-        <li key={x.key} className="grid grid-cols-[minmax(0,1fr)_minmax(60px,140px)_48px_52px] items-center gap-3 px-4 py-1.5 text-[13px]">
+        <li key={x.key} className="grid grid-cols-[minmax(0,1fr)_minmax(60px,140px)_48px_52px] items-center gap-3 px-4 py-1.5 text-[14px]">
           {x.href ? (
             <Link href={x.href} className="truncate hover:underline">
               {x.label}
@@ -326,7 +326,7 @@ function BreakdownList({ items, max, share, tone }: { items: { key: string; labe
           )}
           <Meter value={x.count} max={max} tone={tone} />
           <span className="num text-right">{x.count}</span>
-          <span className="num text-right text-[12px] text-muted">{share(x.count)}</span>
+          <span className="num text-right text-[13px] text-muted">{share(x.count)}</span>
         </li>
       ))}
     </ul>
@@ -344,7 +344,7 @@ async function Codes() {
       <Notice tone="info">
         Codes go in captions and on screen; the link goes in bio. A click on <span className="num">{origin}/r/CODE</span> is logged and forwarded to your app link with <span className="num">?ref=CODE</span>. Pass the code to RevenueCat as the <span className="num">creator_code</span> attribute and purchases are matched automatically.
       </Notice>
-      <Card title={`Codes & links · last ${WINDOW_DAYS} days`} action={<span className="num text-[12px] text-muted">{compact(tot.clicks)} clicks · {compact(tot.installs)} link installs · {compact(tot.redemptions)} redemptions</span>} flush>
+      <Card title={`Codes & links · last ${WINDOW_DAYS} days`} action={<span className="num text-[13px] text-muted">{compact(tot.clicks)} clicks · {compact(tot.installs)} link installs · {compact(tot.redemptions)} redemptions</span>} flush>
         {rows.length === 0 ? (
           <div className="p-4">
             <Empty title="No creators in trial or active">Codes are assigned when a creator moves to trial on the Pipeline page.</Empty>
@@ -378,7 +378,7 @@ async function Codes() {
                 </Td>
                 <Td>
                   {r.promoCode ? (
-                    <a href={`/r/${r.promoCode}`} target="_blank" rel="noopener noreferrer" className="num select-all whitespace-nowrap text-[12px] text-ink-2 hover:text-ink">
+                    <a href={`/r/${r.promoCode}`} target="_blank" rel="noopener noreferrer" className="num select-all whitespace-nowrap text-[13px] text-ink-2 hover:text-ink">
                       {origin}/r/{r.promoCode}
                     </a>
                   ) : (

@@ -84,7 +84,7 @@ async function PayoutsPageContent({ searchParams }: { searchParams: Promise<{ pe
           <p className="text-ink-2">This month hasn&apos;t started. Pick this month or an earlier one.</p>
         ) : (
           <div className="flex flex-wrap items-start justify-between gap-4">
-            <div className="max-w-xl text-[13px] text-ink-2">
+            <div className="max-w-xl text-[14px] text-ink-2">
               Period <span className="num text-ink">{shortDate(period.start)} – {shortDate(period.end)}</span>
               {period.monthToDate && " (month to date)"}. Drafting again replaces this month&apos;s drafts; approved and paid statements are never changed.
             </div>
@@ -135,7 +135,7 @@ async function PayoutsPageContent({ searchParams }: { searchParams: Promise<{ pe
             const list = byStatus.get(st)!;
             if (!list.length) return null;
             return (
-              <Card key={st} title={`${STATUS_LABEL[st]} · ${list.length}`} action={<span className="num text-[12px] text-ink-2">{usd2(sum(list))}</span>} flush>
+              <Card key={st} title={`${STATUS_LABEL[st]} · ${list.length}`} action={<span className="num text-[13px] text-ink-2">{usd2(sum(list))}</span>} flush>
                 <Table head={["Creator", "Period", { label: "Lines", align: "right" }, { label: "Total", align: "right" }, "Provider", st === "paid" ? "Paid" : st === "approved" ? "Approved" : "Drafted", ""]}>
                   {list.map((s) => {
                     const c = creatorOf.get(s.creatorId);
@@ -147,7 +147,7 @@ async function PayoutsPageContent({ searchParams }: { searchParams: Promise<{ pe
                             {c?.name ?? "Unknown creator"}
                           </Link>
                         </Td>
-                        <Td mono className="whitespace-nowrap text-[12px] text-ink-2">
+                        <Td mono className="whitespace-nowrap text-[13px] text-ink-2">
                           {shortDate(s.periodStart)} – {shortDate(s.periodEnd)}
                         </Td>
                         <Td right mono>
@@ -165,9 +165,9 @@ async function PayoutsPageContent({ searchParams }: { searchParams: Promise<{ pe
                           ) : (
                             <span className="text-tally">No payout method</span>
                           )}
-                          {st === "failed" && s.payoutError && <div className="max-w-[260px] truncate text-[12px] text-loss" title={s.payoutError}>{s.payoutError}</div>}
+                          {st === "failed" && s.payoutError && <div className="max-w-[260px] truncate text-[13px] text-loss" title={s.payoutError}>{s.payoutError}</div>}
                         </Td>
-                        <Td mono className="whitespace-nowrap text-[12px] text-muted">
+                        <Td mono className="whitespace-nowrap text-[13px] text-muted">
                           {relative(st === "paid" ? s.paidAt : st === "approved" ? s.approvedAt : s.createdAt)}
                         </Td>
                         <Td right>
@@ -185,7 +185,7 @@ async function PayoutsPageContent({ searchParams }: { searchParams: Promise<{ pe
         </div>
       )}
 
-      <p className="mt-6 text-[12px] text-muted">
+      <p className="mt-6 text-[13px] text-muted">
         Payout providers:{" "}
         {providers.map((p, i) => (
           <span key={p.key}>

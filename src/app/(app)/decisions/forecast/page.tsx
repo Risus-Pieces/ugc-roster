@@ -101,7 +101,7 @@ async function ForecastPageContent({ searchParams }: { searchParams: Promise<SP>
             <Field label="Target videos per day">
               <input name="videos" defaultValue={target} inputMode="numeric" className={cx(input, "num text-[18px]")} />
             </Field>
-            <div className="border-t border-line pt-3 text-[12px] text-muted">Leave blank to use roster numbers (shown as placeholders).</div>
+            <div className="border-t border-line pt-3 text-[13px] text-muted">Leave blank to use roster numbers (shown as placeholders).</div>
             <Field label="Posts per creator per day">
               <input name="ppd" defaultValue={sp.ppd ?? ""} placeholder={String(actual.inputs.postsPerCreatorPerDay)} inputMode="decimal" className={cx(input, "num")} />
             </Field>
@@ -188,13 +188,13 @@ async function ForecastPageContent({ searchParams }: { searchParams: Promise<SP>
                 { label: "Active creators", n: r.creators, hint: `${pct(used.activationRate, 0)} of trials` },
               ].map((s) => (
                 <div key={s.label} className="rounded-md bg-sunken px-3 py-2.5">
-                  <div className="text-[12px] text-muted">{s.label}</div>
-                  <div className="num text-[20px] font-medium">{s.n.toLocaleString("en-US")}</div>
-                  <div className="num text-[11px] text-muted">{s.hint}</div>
+                  <div className="text-[13px] text-muted">{s.label}</div>
+                  <div className="font-display text-[20px] font-medium tabular-nums">{s.n.toLocaleString("en-US")}</div>
+                  <div className="num text-[12px] text-muted">{s.hint}</div>
                 </div>
               ))}
             </div>
-            <p className="mt-3 text-[12px] text-muted">
+            <p className="mt-3 text-[13px] text-muted">
               {enoughFunnel
                 ? `Rates from your pipeline: ${funnel.contacted} contacted, ${funnel.replied} replied, ${funnel.trial} started a trial, ${funnel.active} active.`
                 : `Your pipeline has ${funnel.contacted} contacted creators, too few to trust (50+ needed), so typical rates are used (15% reply, 40% to trial, 50% to active).`}
@@ -202,9 +202,9 @@ async function ForecastPageContent({ searchParams }: { searchParams: Promise<SP>
           </Card>
 
           <Card title="Inputs used" flush>
-            <table className="w-full text-[13px]">
+            <table className="w-full text-[14px]">
               <thead>
-                <tr className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-muted">
+                <tr className="border-b border-line text-left text-[12px] font-semibold text-muted">
                   <th className="px-4 py-2 font-medium">Input</th>
                   <th className="px-3 py-2 text-right font-medium">Used</th>
                   <th className="px-3 py-2 text-right font-medium">Roster</th>
@@ -217,12 +217,12 @@ async function ForecastPageContent({ searchParams }: { searchParams: Promise<SP>
                     <td className="px-4 py-2">{x.label}</td>
                     <td className="num px-3 py-2 text-right font-medium">{x.value}</td>
                     <td className="num px-3 py-2 text-right text-ink-2">{x.roster}</td>
-                    <td className={cx("px-4 py-2 text-[12px]", x.source === "override" ? "text-tally" : "text-muted")}>{x.source === "override" ? "your override" : x.source === "roster" ? "roster, last 30–60 days" : "typical rate"}</td>
+                    <td className={cx("px-4 py-2 text-[13px]", x.source === "override" ? "text-tally" : "text-muted")}>{x.source === "override" ? "your override" : x.source === "roster" ? "roster, last 30–60 days" : "typical rate"}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="border-t border-line px-4 py-2 text-[12px] text-muted">
+            <p className="border-t border-line px-4 py-2 text-[13px] text-muted">
               Pay comes from the &ldquo;{actual.rateCard.name}&rdquo;{" "}
               <Link href="/payouts/rate-cards" className="underline">
                 rate card

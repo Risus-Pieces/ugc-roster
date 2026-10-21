@@ -30,9 +30,9 @@ const OAUTH_ERRORS: Record<string, string> = {
   failed: "We couldn't finish connecting your account. Please try again in a minute.",
 };
 
-const pInput = cx(input, "!py-2.5 !text-[16px]");
-const pLabel = cx(label, "!text-[13px]");
-const pButton = "w-full !py-2.5 !text-[15px]";
+const pInput = cx(input, "!py-2.5 !text-[17px]");
+const pLabel = cx(label, "!text-[14px]");
+const pButton = "w-full !py-2.5 !text-[16px]";
 
 export default async function CreatorPortal({ params, searchParams }: { params: Promise<{ token: string }>; searchParams: Promise<Record<string, string | string[] | undefined>> }) {
   await connection();
@@ -77,9 +77,9 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
   const doneN = steps.filter((s) => s.done).length;
 
   return (
-    <main className="board mx-3 my-4 max-w-xl px-5 pb-16 pt-7 text-[15px] sm:mx-auto sm:my-8 sm:px-7">
+    <main className="board mx-3 my-4 max-w-xl px-5 pb-16 pt-7 text-[16px] sm:mx-auto sm:my-8 sm:px-7">
       <header className="mb-5">
-        <div className="mb-3 flex items-center gap-2 text-[13px] text-ink-2">
+        <div className="mb-3 flex items-center gap-2 text-[14px] text-ink-2">
           <span className="h-2 w-2 rounded-full bg-tally" aria-hidden />
           {brand.name} creator program
         </div>
@@ -101,18 +101,18 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
       )}
 
       {/* ── Checklist ───────────────────────────────────────────────────── */}
-      <Section id="status" title="Your setup" aside={<span className="num text-[13px] text-ink-2">{doneN}/{steps.length}</span>}>
+      <Section id="status" title="Your setup" aside={<span className="num text-[14px] text-ink-2">{doneN}/{steps.length}</span>}>
         <Meter value={doneN} max={steps.length} tone={doneN === steps.length ? "profit" : "tally"} />
         <ul className="mt-3 divide-y divide-line">
           {steps.map((s) => (
             <li key={s.label}>
               <a href={s.href} className="flex items-center gap-3 py-2.5">
-                <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[12px]", s.done ? "border-profit bg-profit text-panel" : "border-line-strong text-muted")} aria-hidden>
+                <span className={cx("flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-[13px]", s.done ? "border-profit bg-profit text-panel" : "border-line-strong text-muted")} aria-hidden>
                   {s.done ? "✓" : ""}
                 </span>
                 <span className="min-w-0 flex-1">
                   <span className={cx("block", s.done && "text-ink-2")}>{s.label}</span>
-                  <span className="block text-[13px] text-muted">{s.detail}</span>
+                  <span className="block text-[14px] text-muted">{s.detail}</span>
                 </span>
                 {!s.done && <span className="text-muted">›</span>}
               </a>
@@ -120,7 +120,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
           ))}
         </ul>
         {w.started && !w.done && (
-          <div id="warmup" className="mt-3 scroll-mt-4 rounded-lg bg-sunken p-3 text-[13px] text-ink-2">
+          <div id="warmup" className="mt-3 scroll-mt-4 rounded-lg bg-sunken p-3 text-[14px] text-ink-2">
             <div className="mb-1.5 flex justify-between">
               <span className="font-medium text-ink">Warm-up: day {w.day} of {w.targetDays}</span>
               <span className="num">{w.remaining} to go</span>
@@ -140,7 +140,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
           <div className="space-y-5">
             {todaysBriefs.map((b) => (
               <article key={b.id}>
-                <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[12px]">
+                <div className="mb-1.5 flex flex-wrap items-center gap-2 text-[13px]">
                   <Badge tone={b.kind === "breakout" ? "tally" : b.kind === "test" ? "info" : "neutral"}>{b.kind === "breakout" ? "trending now" : b.kind === "test" ? "new format" : "proven format"}</Badge>
                   <span className="text-ink-2">{b.format}</span>
                   {b.status !== "assigned" && <Badge tone={b.status === "done" ? "profit" : "info"}>{b.status}</Badge>}
@@ -148,15 +148,15 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
                 <h3 className="font-display text-[19px] font-bold leading-snug tracking-[-0.01em]">&ldquo;{b.hook}&rdquo;</h3>
                 <div className="mt-3">
                   <div className={pLabel}>Script</div>
-                  <p className="whitespace-pre-line rounded-lg bg-sunken p-3 text-[14px] leading-relaxed">{b.script}</p>
+                  <p className="whitespace-pre-line rounded-lg bg-sunken p-3 text-[15px] leading-relaxed">{b.script}</p>
                 </div>
                 {b.shotList.length > 0 && (
                   <div className="mt-3">
                     <div className={pLabel}>Shot list</div>
                     <ol className="space-y-1.5">
                       {b.shotList.map((s, i) => (
-                        <li key={i} className="flex gap-2.5 text-[14px]">
-                          <span className="num mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sunken text-[11px] text-ink-2">{i + 1}</span>
+                        <li key={i} className="flex gap-2.5 text-[15px]">
+                          <span className="num mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sunken text-[12px] text-ink-2">{i + 1}</span>
                           <span>{s}</span>
                         </li>
                       ))}
@@ -171,7 +171,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
 
       {/* ── Submit a draft ──────────────────────────────────────────────── */}
       <Section id="submit" title="Submit a draft for review">
-        <p className="mb-3 text-[14px] text-ink-2">Send your video before you post it. We check it automatically, then a person approves it. Only approved videos get paid — please don&apos;t post until you hear back.</p>
+        <p className="mb-3 text-[15px] text-ink-2">Send your video before you post it. We check it automatically, then a person approves it. Only approved videos get paid — please don&apos;t post until you hear back.</p>
         <KeepForm action={submitDraftAction} resetOnSuccess>
           <input type="hidden" name="token" value={token} />
           <DraftFields roomy briefs={todaysBriefs.map((b) => ({ id: b.id, label: `Today: ${b.hook.slice(0, 60)}${b.hook.length > 60 ? "…" : ""}` }))} />
@@ -182,36 +182,36 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
 
         {myReviews.length > 0 && (
           <div className="mt-6">
-            <h3 className="mb-2 text-[13px] font-semibold">Your drafts</h3>
+            <h3 className="mb-2 text-[14px] font-semibold">Your drafts</h3>
             <ul className="space-y-3">
               {myReviews.map((r) => (
                 <li key={r.id} className="rounded-lg border border-line p-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <Badge tone={REVIEW_TONE[r.status]}>{REVIEW_LABEL[r.status]}</Badge>
-                    <span className="text-[12px] text-muted">
+                    <span className="text-[13px] text-muted">
                       {NAME[r.platform]} · sent {relative(r.createdAt)}
                     </span>
                   </div>
-                  <p className="mt-1.5 line-clamp-2 break-words text-[14px]">{r.caption}</p>
+                  <p className="mt-1.5 line-clamp-2 break-words text-[15px]">{r.caption}</p>
                   {r.reviewerNotes && (
-                    <p className="mt-2 rounded-md bg-tally-soft px-2.5 py-1.5 text-[13px] text-ink">
+                    <p className="mt-2 rounded-md bg-tally-soft px-2.5 py-1.5 text-[14px] text-ink">
                       <span className="font-medium">Notes: </span>
                       {r.reviewerNotes}
                     </p>
                   )}
                   {r.checks && r.checks.length > 0 && (
                     <details className="mt-2" open={r.status === "pending"}>
-                      <summary className="flex cursor-pointer items-center gap-1.5 text-[13px] text-ink-2">
+                      <summary className="flex cursor-pointer items-center gap-1.5 text-[14px] text-ink-2">
                         Automatic checks {r.overall && <CheckBadge status={r.overall} />}
                       </summary>
                       <ul className="mt-2 space-y-2">
                         {r.checks.map((c) => (
-                          <li key={c.key} className="text-[13px]">
+                          <li key={c.key} className="text-[14px]">
                             <div className="flex items-center justify-between gap-2">
                               <span className="font-medium">{c.label}</span>
                               <CheckBadge status={c.status} />
                             </div>
-                            <p className="text-[12px] leading-snug text-ink-2">{c.detail}</p>
+                            <p className="text-[13px] leading-snug text-ink-2">{c.detail}</p>
                           </li>
                         ))}
                       </ul>
@@ -230,7 +230,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
           <p className="text-ink-2">We&apos;re preparing your contract. It&apos;ll show up here to sign — we&apos;ll let you know.</p>
         ) : (
           <>
-            <div className="mb-3 grid grid-cols-2 gap-2 text-[13px]">
+            <div className="mb-3 grid grid-cols-2 gap-2 text-[14px]">
               <Term k="Per video" v={money(contract.terms.baseCents)} />
               <Term k="Per 1,000 views" v={usd2(contract.terms.cpmCents)} />
               <Term k="Videos per month" v={String(contract.terms.videosPerMonth)} />
@@ -239,13 +239,13 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
               <Term k="Max per month" v={money(contract.terms.monthlyCapCents)} />
             </div>
             <details className="rounded-lg border border-line" open={!signed}>
-              <summary className="cursor-pointer px-3 py-2.5 text-[14px] font-medium">Read the full contract</summary>
-              <div className="max-h-[60vh] overflow-y-auto border-t border-line px-3 py-2 text-[14px]">
+              <summary className="cursor-pointer px-3 py-2.5 text-[15px] font-medium">Read the full contract</summary>
+              <div className="max-h-[60vh] overflow-y-auto border-t border-line px-3 py-2 text-[15px]">
                 <Markdown source={contract.body} />
               </div>
             </details>
             {signed ? (
-              <p className="mt-3 text-[13px] text-ink-2">
+              <p className="mt-3 text-[14px] text-ink-2">
                 Signed by <span className="font-medium text-ink">{contract.signatureName}</span> on {contract.signedAt?.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" })}.
               </p>
             ) : (
@@ -256,14 +256,14 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
                   <span className={pLabel}>Type your full legal name</span>
                   <input name="name" required minLength={3} autoComplete="name" className={cx(pInput, "font-display !text-[18px]")} />
                 </label>
-                <label className="flex items-start gap-2.5 text-[14px]">
+                <label className="flex items-start gap-2.5 text-[15px]">
                   <input type="checkbox" name="consent" required className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--ink)]" />
                   <span>I agree to sign electronically, and that typing my name is my legal signature on this contract.</span>
                 </label>
                 <SubmitButton variant="primary" className={pButton} pendingText="Signing…">
                   Sign contract
                 </SubmitButton>
-                <p className="text-[12px] text-muted">We record your name, the time, your IP address and device, and a fingerprint of the exact text you signed.</p>
+                <p className="text-[13px] text-muted">We record your name, the time, your IP address and device, and a fingerprint of the exact text you signed.</p>
               </ActionForm>
             )}
           </>
@@ -274,7 +274,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
       <Section id="tax" title="Tax form" aside={taxForm && taxForm.status !== "requested" && <Badge tone={taxForm.status === "verified" ? "profit" : taxForm.status === "rejected" ? "loss" : "info"}>{taxForm.status}</Badge>}>
         {taxDone && taxForm ? (
           <>
-            <p className="text-[14px]">
+            <p className="text-[15px]">
               {taxForm.formType} submitted {day(taxForm.submittedAt)}
               {taxForm.tinLast4 && (
                 <>
@@ -283,10 +283,10 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
                 </>
               )}
             </p>
-            <p className="mt-1 text-[13px] text-ink-2">{taxForm.status === "verified" ? "Verified — you're all set." : "We'll check it shortly. Nothing else to do."}</p>
+            <p className="mt-1 text-[14px] text-ink-2">{taxForm.status === "verified" ? "Verified — you're all set." : "We'll check it shortly. Nothing else to do."}</p>
             {taxForm.status === "submitted" && (
               <details className="mt-3">
-                <summary className="cursor-pointer text-[13px] text-ink-2">Made a mistake? Submit it again</summary>
+                <summary className="cursor-pointer text-[14px] text-ink-2">Made a mistake? Submit it again</summary>
                 <div className="mt-3">
                   <TaxForm action={submitTaxFormAction} token={token} defaultType={taxForm.formType} citizenship={citizenship} />
                 </div>
@@ -300,7 +300,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
                 <Notice tone="loss">We couldn&apos;t verify your last form. Please check the details and submit it again.</Notice>
               </div>
             )}
-            <p className="mb-3 text-[14px] text-ink-2">We need this before your first payment. It takes about two minutes.</p>
+            <p className="mb-3 text-[15px] text-ink-2">We need this before your first payment. It takes about two minutes.</p>
             <TaxForm action={submitTaxFormAction} token={token} defaultType={defaultTax} citizenship={citizenship} />
           </>
         )}
@@ -308,7 +308,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
 
       {/* ── Accounts ────────────────────────────────────────────────────── */}
       <Section id="accounts" title="Connect your accounts">
-        <p className="mb-3 text-[14px] text-ink-2">
+        <p className="mb-3 text-[15px] text-ink-2">
           Log in with each platform so we can read your views directly — that&apos;s what your pay is based on, so you never have to send screenshots. We never see your password and can&apos;t post for you.
         </p>
         <ul className="divide-y divide-line">
@@ -319,7 +319,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
               <li key={p} className="flex flex-wrap items-center gap-3 py-3">
                 <div className="min-w-0 flex-1">
                   <div className="font-medium">{NAME[p]}</div>
-                  <div className="text-[13px] text-muted">
+                  <div className="text-[14px] text-muted">
                     {acct ? (
                       <>
                         @{acct.handle} · <span className="num">{compact(acct.followers)}</span> followers
@@ -345,14 +345,14 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
                     </SubmitButton>
                   </ActionForm>
                 ) : (
-                  <span className="text-[13px] text-muted">Not available yet</span>
+                  <span className="text-[14px] text-muted">Not available yet</span>
                 )}
               </li>
             );
           })}
         </ul>
         {PLATFORMS.some((p) => !connectedProviders[p].configured()) && (
-          <p className="mt-2 text-[12px] text-muted">
+          <p className="mt-2 text-[13px] text-muted">
             &ldquo;Demo&rdquo; marks an account as connected without logging in. Real login needs the platform&apos;s API keys, which haven&apos;t been added to this workspace yet.
           </p>
         )}
@@ -361,7 +361,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
       {/* ── Payout ──────────────────────────────────────────────────────── */}
       <Section id="payout" title="Payout method">
         {payoutDone && (
-          <p className="mb-3 text-[14px]">
+          <p className="mb-3 text-[15px]">
             Paid by <span className="font-medium">{NAME_PAYOUT[creator.payoutProvider!]}</span> to <span className="num break-all">{creator.payoutDestination}</span>
           </p>
         )}
@@ -378,7 +378,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
           <label className="block">
             <span className={pLabel}>Where to send it</span>
             <input name="destination" required defaultValue={creator.payoutDestination ?? ""} autoComplete="off" className={pInput} />
-            <span className="mt-1 block text-[12px] leading-snug text-muted">PayPal: the email on your PayPal account · Wise: your recipient ID (numbers) · Stripe: your connected account ID (starts with acct_)</span>
+            <span className="mt-1 block text-[13px] leading-snug text-muted">PayPal: the email on your PayPal account · Wise: your recipient ID (numbers) · Stripe: your connected account ID (starts with acct_)</span>
           </label>
           <KeepSubmit className={pButton} pendingText="Saving…">
             {payoutDone ? "Update payout method" : "Save payout method"}
@@ -388,15 +388,15 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
 
       {/* ── Referral ────────────────────────────────────────────────────── */}
       <Section id="refer" title="Refer a creator">
-        <p className="text-[14px] text-ink-2">
+        <p className="text-[15px] text-ink-2">
           Earn <span className="num font-medium text-ink">{money(card.referralBonusCents)}</span> for each creator you refer who finishes their trial and joins the program.
         </p>
         <div className="mt-3 flex items-center gap-2 rounded-lg bg-sunken p-2 pl-3">
-          <span className="num min-w-0 flex-1 truncate text-[13px]">{`${origin}/join/${creator.referralCode}`}</span>
+          <span className="num min-w-0 flex-1 truncate text-[14px]">{`${origin}/join/${creator.referralCode}`}</span>
           <CopyButton value={`${origin}/join/${creator.referralCode}`} small={false} className="!py-2" />
         </div>
         {myReferrals.length > 0 && (
-          <p className="mt-2 text-[13px] text-ink-2">
+          <p className="mt-2 text-[14px] text-ink-2">
             <span className="num">{myReferrals.length}</span> referred · <span className="num">{myReferrals.filter((r) => r.status === "qualified" || r.status === "paid").length}</span> joined
           </p>
         )}
@@ -405,12 +405,12 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
       {/* ── Statements ──────────────────────────────────────────────────── */}
       <Section id="statements" title="Payments">
         {myStatements.length === 0 ? (
-          <p className="text-[14px] text-ink-2">No statements yet. You&apos;ll get one each month for your approved, published videos.</p>
+          <p className="text-[15px] text-ink-2">No statements yet. You&apos;ll get one each month for your approved, published videos.</p>
         ) : (
           <ul className="divide-y divide-line">
             {myStatements.map((s) => (
               <li key={s.id} className="flex items-center justify-between gap-3 py-2.5">
-                <span className="text-[14px]">
+                <span className="text-[15px]">
                   {day(new Date(`${s.periodStart}T12:00:00Z`))} – {day(new Date(`${s.periodEnd}T12:00:00Z`))}
                 </span>
                 <span className="flex items-center gap-2">
@@ -423,7 +423,7 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
         )}
       </Section>
 
-      <footer className="mt-8 text-center text-[12px] text-muted">
+      <footer className="mt-8 text-center text-[13px] text-muted">
         Questions? Reply to any email from {brand.senderName.split(" ")[0]} at {brand.name}.
       </footer>
     </main>
@@ -452,8 +452,8 @@ function Section({ id, title, aside, children }: { id: string; title: string; as
 function Term({ k, v }: { k: string; v: string }) {
   return (
     <div className="rounded-lg bg-sunken px-3 py-2">
-      <div className="text-[12px] text-muted">{k}</div>
-      <div className="num text-[15px] font-medium">{v}</div>
+      <div className="text-[13px] text-muted">{k}</div>
+      <div className="num text-[16px] font-medium">{v}</div>
     </div>
   );
 }

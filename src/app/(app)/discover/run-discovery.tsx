@@ -27,23 +27,23 @@ export function RunDiscovery({ campaignId, band, resultsHref, children }: { camp
         <div className="min-w-0 flex-1">{children}</div>
         <form action={action}>
           <input type="hidden" name="campaignId" value={campaignId} />
-          <SubmitButton pendingText="Searching…" className="!py-1 !text-[12px]">
+          <SubmitButton pendingText="Searching…" className="!py-1 !text-[13px]">
             Run discovery
           </SubmitButton>
         </form>
       </div>
-      {state && !state.ok && <p className="mt-2 text-[12px] text-loss">{state.message}</p>}
+      {state && !state.ok && <p className="mt-2 text-[13px] text-loss">{state.message}</p>}
       {run && (
         <div className="mt-3 rounded-md border border-line bg-sunken p-3">
           <dl className="grid grid-cols-2 gap-x-4 gap-y-2 sm:grid-cols-3 lg:grid-cols-6">
             {stats.map((s) => (
               <div key={s.label}>
-                <dt className="text-[11px] leading-tight text-muted">{s.label}</dt>
+                <dt className="text-[12px] leading-tight text-muted">{s.label}</dt>
                 <dd className={cx("num text-[17px]", s.strong && "font-medium text-tally")}>{s.value}</dd>
               </div>
             ))}
           </dl>
-          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[12px] text-ink-2">
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-2 text-[13px] text-ink-2">
             <span>
               Searched with{" "}
               {providers.map((p, i) => (

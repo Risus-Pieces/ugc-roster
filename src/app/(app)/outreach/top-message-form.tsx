@@ -13,7 +13,7 @@ export function TopMessageForm({ action, children, className }: { action: (prev:
   return (
     <form action={formAction} className={className}>
       {state?.message && (
-        <p role="status" className={cx("sticky top-0 z-10 border-b border-line px-4 py-2 text-[12px]", state.ok ? "bg-profit-soft text-profit" : "bg-loss-soft text-loss")}>
+        <p role="status" className={cx("sticky top-0 z-10 border-b border-line px-4 py-2 text-[13px]", state.ok ? "bg-profit-soft text-profit" : "bg-loss-soft text-loss")}>
           {state.message}
         </p>
       )}

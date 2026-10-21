@@ -58,19 +58,19 @@ async function Invite({ params }: { params: Promise<{ code: string }> }) {
         <dl className="divide-y divide-line">
           <div className="flex items-baseline justify-between gap-3 px-4 py-3">
             <dt className="text-ink-2">Per approved video</dt>
-            <dd className="num text-[20px] font-medium">{usd(card.baseCents)}</dd>
+            <dd className="font-display text-[20px] font-medium tabular-nums">{usd(card.baseCents)}</dd>
           </div>
           <div className="flex items-baseline justify-between gap-3 px-4 py-3">
             <dt className="text-ink-2">
               Per 1,000 views
-              <span className="block text-[12px] text-muted">views in the first {card.viewWindowDays} days</span>
+              <span className="block text-[13px] text-muted">views in the first {card.viewWindowDays} days</span>
             </dt>
-            <dd className="num text-[20px] font-medium">+{usd2(card.cpmCents)}</dd>
+            <dd className="font-display text-[20px] font-medium tabular-nums">+{usd2(card.cpmCents)}</dd>
           </div>
           {milestones.length > 0 && (
             <div className="flex items-baseline justify-between gap-3 px-4 py-3">
               <dt className="text-ink-2">Bonuses</dt>
-              <dd className="num text-right text-[13px]">
+              <dd className="num text-right text-[14px]">
                 {milestones.map((m) => (
                   <div key={m.views}>
                     {usd(m.bonusCents)} at {compact(m.views)} views
@@ -80,13 +80,13 @@ async function Invite({ params }: { params: Promise<{ code: string }> }) {
             </div>
           )}
         </dl>
-        <p className="border-t border-line px-4 py-2.5 text-[12px] text-muted">Paid monthly by Wise, PayPal or bank transfer. Up to {usd(card.perVideoCapCents)} per video.</p>
+        <p className="border-t border-line px-4 py-2.5 text-[13px] text-muted">Paid monthly by Wise, PayPal or bank transfer. Up to {usd(card.perVideoCapCents)} per video.</p>
       </section>
 
-      <ol className="mt-5 space-y-1.5 text-[13px] text-ink-2">
+      <ol className="mt-5 space-y-1.5 text-[14px] text-ink-2">
         {["Tell us where you post.", "We send a sample brief and a link for a quick call.", "Get the app, post, and get paid for every approved video."].map((s, i) => (
           <li key={s} className="flex gap-2.5">
-            <span className="num flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sunken text-[11px] text-ink">{i + 1}</span>
+            <span className="num flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-sunken text-[12px] text-ink">{i + 1}</span>
             {s}
           </li>
         ))}

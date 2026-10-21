@@ -140,7 +140,7 @@ async function OpsForm() {
   return (
     <KeepForm action={saveOpsAction} className="max-w-4xl space-y-4">
       <Card title="Breakout alerts">
-        <p className="mb-3 text-[12px] text-muted">A campaign post that clears all three is flagged as a breakout, and variations go to the roster while the trend is fresh.</p>
+        <p className="mb-3 text-[13px] text-muted">A campaign post that clears all three is flagged as a breakout, and variations go to the roster while the trend is fresh.</p>
         <div className="grid gap-3 sm:grid-cols-3">
           <Field label="Minimum views">
             <input name="minViews" defaultValue={o.breakout.minViews} inputMode="numeric" className={cx(input, "num")} />
@@ -250,9 +250,9 @@ async function Integrations() {
 
       <Card title="Integration status" flush>
         <div className="overflow-x-auto">
-          <table className="w-full border-collapse text-[13px]">
+          <table className="w-full border-collapse text-[14px]">
             <thead>
-              <tr className="border-b border-line text-left text-[11px] uppercase tracking-[0.08em] text-muted">
+              <tr className="border-b border-line text-left text-[12px] font-semibold text-muted">
                 <th className="px-4 py-2 font-medium">Integration</th>
                 <th className="px-3 py-2 font-medium">Status</th>
                 <th className="px-3 py-2 font-medium">Environment variables</th>
@@ -264,27 +264,27 @@ async function Integrations() {
                 <tr key={r.name} className="align-top">
                   <td className="px-4 py-2.5">
                     <div className="font-medium">{r.name}</div>
-                    <div className="max-w-[280px] text-[12px] text-ink-2">{r.what}</div>
+                    <div className="max-w-[280px] text-[13px] text-ink-2">{r.what}</div>
                   </td>
                   <td className="px-3 py-2.5">
                     <Badge tone={r.status.tone}>{r.status.label}</Badge>
                   </td>
                   <td className="px-3 py-2.5">
                     {r.env.length === 0 ? (
-                      <span className="text-[12px] text-muted">None (CSV import)</span>
+                      <span className="text-[13px] text-muted">None (CSV import)</span>
                     ) : (
                       <ul className="space-y-0.5">
                         {r.env.map((e) => (
                           <li key={e.key} className="flex items-center gap-1.5 whitespace-nowrap">
                             <span className={cx("h-1.5 w-1.5 rounded-full", has(e.key) ? "bg-profit" : e.optional ? "bg-line-strong" : "bg-tally")} aria-hidden />
-                            <span className="num text-[12px]">{e.key}</span>
-                            <span className="text-[11px] text-muted">{has(e.key) ? "set" : e.optional ? "optional" : "not set"}</span>
+                            <span className="num text-[13px]">{e.key}</span>
+                            <span className="text-[12px] text-muted">{has(e.key) ? "set" : e.optional ? "optional" : "not set"}</span>
                           </li>
                         ))}
                       </ul>
                     )}
                   </td>
-                  <td className="px-4 py-2.5 text-[12px] text-ink-2">{r.note}</td>
+                  <td className="px-4 py-2.5 text-[13px] text-ink-2">{r.note}</td>
                 </tr>
               ))}
             </tbody>
@@ -294,7 +294,7 @@ async function Integrations() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <Card title="Webhooks to configure" className="min-w-0">
-          <dl className="space-y-3 text-[13px]">
+          <dl className="space-y-3 text-[14px]">
             <Hook title="RevenueCat" url={`${origin}/api/webhooks/revenuecat`}>
               RevenueCat → Integrations → Webhooks. Set the Authorization header to your REVENUECAT_WEBHOOK_SECRET. Set a <span className="num">creator_code</span> subscriber attribute in the app to match purchases to promo codes.
             </Hook>
@@ -314,8 +314,8 @@ async function Integrations() {
         </Card>
 
         <Card title="In-app survey API" className="min-w-0">
-          <p className="mb-2 text-[13px] text-ink-2">Ask &ldquo;Where did you hear about us?&rdquo; during onboarding. Fetch the options (creator order is shuffled per request), then post the answer. CORS is open so the app or website can call it directly.</p>
-          <pre className="num overflow-x-auto rounded-md bg-sunken p-3 text-[12px] leading-relaxed">{`GET ${origin}/api/survey
+          <p className="mb-2 text-[14px] text-ink-2">Ask &ldquo;Where did you hear about us?&rdquo; during onboarding. Fetch the options (creator order is shuffled per request), then post the answer. CORS is open so the app or website can call it directly.</p>
+          <pre className="num overflow-x-auto rounded-md bg-sunken p-3 text-[13px] leading-relaxed">{`GET ${origin}/api/survey
 → { "question": "Where did you hear about us?",
     "options": [
       { "label": "Sofia Kim", "creatorId": "c_123…", "type": "creator" },
@@ -326,13 +326,13 @@ POST ${origin}/api/survey
 Content-Type: application/json
 { "creatorId": "c_123…", "answer": "Sofia Kim", "appUserId": "rc_abc" }
 → { "ok": true }`}</pre>
-          <p className="mt-2 text-[12px] text-muted">Send the RevenueCat app user ID as appUserId so a survey answer can be tied to a subscriber later. Generic answers send creatorId null.</p>
+          <p className="mt-2 text-[13px] text-muted">Send the RevenueCat app user ID as appUserId so a survey answer can be tied to a subscriber later. Generic answers send creatorId null.</p>
         </Card>
       </div>
 
       <Card title="Import Google Play installs">
         <KeepForm action={importGooglePlayAction} resetOnSuccess className="space-y-3">
-          <p className="text-[13px] text-ink-2">
+          <p className="text-[14px] text-ink-2">
             Play Console exports installs monthly to its Cloud Storage bucket as <span className="num break-all">stats/installs/installs_&lt;package&gt;_&lt;YYYYMM&gt;_overview.csv</span>. Upload that file (or paste it). Re-importing a month overwrites those days.
           </p>
           <div className="grid gap-3 md:grid-cols-[1fr_1fr]">
@@ -340,7 +340,7 @@ Content-Type: application/json
               <input name="file" type="file" accept=".csv,text/csv" className={cx(input, "py-1")} />
             </Field>
             <Field label="…or paste CSV">
-              <textarea name="csv" rows={3} placeholder={"Date,Package Name,Daily User Installs,…\n2026-10-01,com.example.app,412,…"} className={cx(input, "num text-[12px]")} />
+              <textarea name="csv" rows={3} placeholder={"Date,Package Name,Daily User Installs,…\n2026-10-01,com.example.app,412,…"} className={cx(input, "num text-[13px]")} />
             </Field>
           </div>
           <KeepSubmit pendingText="Importing…">Import installs</KeepSubmit>
@@ -351,15 +351,15 @@ Content-Type: application/json
 }
 
 function Url({ children }: { children: string }) {
-  return <div className="num select-all break-all text-[11px] text-ink-2">{children}</div>;
+  return <div className="num select-all break-all text-[12px] text-ink-2">{children}</div>;
 }
 
 function Hook({ title, url, children }: { title: string; url: string; children: React.ReactNode }) {
   return (
     <div>
       <dt className="font-medium">{title}</dt>
-      <dd className="num select-all break-all text-[12px] text-ink">{url}</dd>
-      <dd className="mt-0.5 text-[12px] text-ink-2">{children}</dd>
+      <dd className="num select-all break-all text-[13px] text-ink">{url}</dd>
+      <dd className="mt-0.5 text-[13px] text-ink-2">{children}</dd>
     </div>
   );
 }

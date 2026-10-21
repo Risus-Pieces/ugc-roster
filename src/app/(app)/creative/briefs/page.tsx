@@ -79,7 +79,7 @@ export default async function BriefsPage({ searchParams }: { searchParams: Promi
             →
           </Link>
         </div>
-        <span className="text-[13px] text-ink-2">
+        <span className="text-[14px] text-ink-2">
           {new Date(`${date}T12:00:00Z`).toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", timeZone: "UTC" })}
           {date === today && <span className="text-muted"> · today</span>}
         </span>
@@ -88,7 +88,7 @@ export default async function BriefsPage({ searchParams }: { searchParams: Promi
       {rows.length > 0 && (
         <div className="mb-5 grid gap-3 rounded-lg border border-line bg-panel px-4 py-3 md:grid-cols-[1fr_auto] md:items-center">
           <div>
-            <div className="mb-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[13px]">
+            <div className="mb-1.5 flex flex-wrap items-baseline gap-x-4 gap-y-1 text-[14px]">
               <span>
                 <span className="num font-medium">{proven}</span> proven <span className="num text-muted">({daily ? Math.round((proven / daily) * 100) : 0}%)</span>
               </span>
@@ -98,7 +98,7 @@ export default async function BriefsPage({ searchParams }: { searchParams: Promi
               <span>
                 <span className="num font-medium">{rows.length - daily}</span> breakout
               </span>
-              <span className="text-[12px] text-muted">
+              <span className="text-[13px] text-muted">
                 target {100 - testTarget}/{testTarget}
               </span>
             </div>
@@ -108,7 +108,7 @@ export default async function BriefsPage({ searchParams }: { searchParams: Promi
               <div className="absolute inset-y-0 w-px bg-panel" style={{ left: `${100 - testTarget}%` }} title="target split" />
             </div>
           </div>
-          <div className="flex gap-4 text-[13px] text-ink-2">
+          <div className="flex gap-4 text-[14px] text-ink-2">
             <span>
               <span className="num text-ink">{submitted}</span> submitted
             </span>
@@ -142,9 +142,9 @@ export default async function BriefsPage({ searchParams }: { searchParams: Promi
             return (
               <section key={k.key}>
                 <div className="mb-2 flex flex-wrap items-baseline gap-x-3">
-                  <h2 className="font-display text-[16px] font-bold tracking-[-0.01em]">{k.title}</h2>
-                  <span className="num text-[12px] text-muted">{list.length}</span>
-                  <span className="text-[12px] text-ink-2">{k.blurb}</span>
+                  <h2 className="font-display text-[17px] font-bold tracking-[-0.01em]">{k.title}</h2>
+                  <span className="num text-[13px] text-muted">{list.length}</span>
+                  <span className="text-[13px] text-ink-2">{k.blurb}</span>
                 </div>
                 <div className="grid gap-3 md:grid-cols-2 2xl:grid-cols-3">
                   {list.map((b) => (
@@ -167,16 +167,16 @@ function BriefCard({ b, creatorName }: { b: Brief; creatorName: string }) {
         <Link href={`/creators/${b.creatorId}`} className="font-medium hover:underline">
           {creatorName}
         </Link>
-        <span className="text-[12px] text-ink-2">{b.format}</span>
+        <span className="text-[13px] text-ink-2">{b.format}</span>
         <Badge tone={STATUS_TONE[b.status]} className="ml-auto">
           {b.status}
         </Badge>
       </header>
       <div className="flex-1 space-y-2.5 px-4 py-3">
-        <div className="font-display text-[15px] font-bold leading-snug">{b.hook}</div>
-        <p className="whitespace-pre-line break-words text-[13px] text-ink-2">{b.script}</p>
+        <div className="font-display text-[16px] font-bold leading-snug">{b.hook}</div>
+        <p className="whitespace-pre-line break-words text-[14px] text-ink-2">{b.script}</p>
         {b.shotList.length > 0 && (
-          <ol className="list-decimal space-y-0.5 pl-5 text-[12px] text-ink-2 marker:text-muted">
+          <ol className="list-decimal space-y-0.5 pl-5 text-[13px] text-ink-2 marker:text-muted">
             {b.shotList.map((s, i) => (
               <li key={i}>{s}</li>
             ))}
@@ -184,7 +184,7 @@ function BriefCard({ b, creatorName }: { b: Brief; creatorName: string }) {
         )}
       </div>
       {(b.sourcePostId || b.breakoutId) && (
-        <footer className="flex gap-3 border-t border-line px-4 py-2 text-[12px]">
+        <footer className="flex gap-3 border-t border-line px-4 py-2 text-[13px]">
           {b.sourcePostId && (
             <Link href={`/creative/${b.sourcePostId}`} className="text-ink-2 hover:text-ink">
               Source video →

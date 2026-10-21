@@ -105,7 +105,7 @@ export function RateCardEditor({ card }: { card: CardInput }) {
             <p className="text-ink-2">No milestones. Add one to pay a one-time bonus when a video passes a view count.</p>
           ) : (
             <div className="space-y-2">
-              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[11px] uppercase tracking-[0.08em] text-muted">
+              <div className="grid grid-cols-[1fr_1fr_auto] gap-2 text-[12px] font-semibold text-muted">
                 <span>Credible views</span>
                 <span>Bonus</span>
                 <span className="w-16" />
@@ -131,12 +131,12 @@ export function RateCardEditor({ card }: { card: CardInput }) {
             </button>
           }
         >
-          <p className="mb-3 text-[12px] text-muted">A creator&apos;s typical (median) credible views decide their tier: the highest tier they qualify for replaces the base and per-1K above. Below every tier, the card&apos;s own rates apply (&ldquo;Standard&rdquo;).</p>
+          <p className="mb-3 text-[13px] text-muted">A creator&apos;s typical (median) credible views decide their tier: the highest tier they qualify for replaces the base and per-1K above. Below every tier, the card&apos;s own rates apply (&ldquo;Standard&rdquo;).</p>
           {tiers.length === 0 ? (
             <p className="text-ink-2">No tiers. Everyone is paid the rates above.</p>
           ) : (
             <div className="space-y-2 overflow-x-auto">
-              <div className="grid min-w-[520px] grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-2 text-[11px] uppercase tracking-[0.08em] text-muted">
+              <div className="grid min-w-[520px] grid-cols-[1.2fr_1fr_1fr_1fr_auto] gap-2 text-[12px] font-semibold text-muted">
                 <span>Name</span>
                 <span>Min typical views</span>
                 <span>Base</span>
@@ -171,7 +171,7 @@ export function RateCardEditor({ card }: { card: CardInput }) {
           <SubmitButton variant="primary" pendingText="Saving…">
             {card.id ? "Save rate card" : "Create rate card"}
           </SubmitButton>
-          <span className="text-[12px] text-muted">Applies to statements you draft from now on.</span>
+          <span className="text-[13px] text-muted">Applies to statements you draft from now on.</span>
         </div>
       </ActionForm>
 
@@ -204,7 +204,7 @@ function Preview({ rules }: { rules: RateCardRules }) {
           <input value={typical} onChange={(e) => setTypical(e.target.value)} inputMode="numeric" placeholder={String(v)} className={cx(input, "num")} />
         </Field>
       </div>
-      <dl className="space-y-1.5 text-[13px]">
+      <dl className="space-y-1.5 text-[14px]">
         <Line label={`Tier: ${tier.name}`} value={`${usd2(tier.baseCents)} + ${usd2(tier.cpmCents)}/1K`} muted />
         <Line label="Base" value={usd2(tier.baseCents)} />
         <Line label={v >= rules.minViewsForCpm ? `${v.toLocaleString("en-US")} views × ${usd2(tier.cpmCents)}/1K` : `Per-view (below ${rules.minViewsForCpm.toLocaleString("en-US")} views)`} value={usd2(perf.cpm)} />
@@ -214,14 +214,14 @@ function Preview({ rules }: { rules: RateCardRules }) {
         {raw > total && <Line label={`Per-video cap (${usd2(rules.perVideoCapCents)})`} value={`−${usd2(raw - total)}`} tone="loss" />}
         <div className="flex items-baseline justify-between border-t border-line pt-2">
           <dt className="font-medium">This video pays</dt>
-          <dd className="num text-[20px] font-medium">{usd2(total)}</dd>
+          <dd className="font-display text-[20px] font-medium tabular-nums">{usd2(total)}</dd>
         </div>
         <Line label="Cost per 1K views" value={v > 0 ? usd2(per1k) : "—"} muted />
       </dl>
 
       <div className="mt-4 border-t border-line pt-3">
-        <div className="mb-1.5 text-[11px] uppercase tracking-[0.08em] text-muted">At other view counts</div>
-        <table className="w-full text-[12px]">
+        <div className="mb-1.5 text-[12px] font-semibold text-muted">At other view counts</div>
+        <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-muted">
               <th className="py-1 font-normal">Views</th>
@@ -242,7 +242,7 @@ function Preview({ rules }: { rules: RateCardRules }) {
             })}
           </tbody>
         </table>
-        <p className="mt-2 text-[12px] text-muted">
+        <p className="mt-2 text-[13px] text-muted">
           A month at quota ({rules.videosPerMonth} videos at {compact(v)} views) costs at most {usd2(Math.min(rules.monthlyCapCents, total * rules.videosPerMonth))}.
         </p>
       </div>
@@ -262,7 +262,7 @@ function Line({ label, value, muted, tone }: { label: string; value: string; mut
 function DollarInput(props: React.InputHTMLAttributes<HTMLInputElement>) {
   return (
     <div className="relative">
-      <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[13px] text-muted">$</span>
+      <span className="pointer-events-none absolute inset-y-0 left-2.5 flex items-center text-[14px] text-muted">$</span>
       <input inputMode="decimal" {...props} className={cx(input, "num pl-5")} />
     </div>
   );

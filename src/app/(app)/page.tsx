@@ -65,9 +65,8 @@ export default async function TodayPage() {
     <>
       <PageHeader
         icon="sun"
-        step={`${season} · day ${now.getDate()}`}
         title="Today"
-        description={now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}
+        description={`${now.toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric", year: "numeric" })}. ${season} on the farm.`}
         actions={
           <>
             <ActionForm action={syncAllAction}>
@@ -92,7 +91,7 @@ export default async function TodayPage() {
 
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_340px]">
         <div className="space-y-4">
-          <Card title="Quest board" action={<span className="text-[12px] font-bold text-muted">{todo.length ? `${todo.length} open` : "all done"}</span>}>
+          <Card title="Quest board" action={<span className="text-[13px] font-bold text-muted">{todo.length ? `${todo.length} open` : "all done"}</span>}>
             {todo.length === 0 ? (
               <div className="flex items-center gap-3 text-ink-2">
                 <Sprite name="chicken" scale={3} className="bob" />
@@ -105,7 +104,7 @@ export default async function TodayPage() {
                     <Link href={t.href} className="flex items-center gap-3 border-2 border-line bg-field px-3 py-2 hover:border-line-strong">
                       <Sprite name={QUEST_ICON[t.href] ?? "scroll"} scale={2} />
                       <span className="flex-1">
-                        <span className="num mr-1.5 text-[15px] text-tally">{t.n}</span>
+                        <span className="num mr-1.5 text-[16px] text-tally">{t.n}</span>
                         {t.label}
                       </span>
                       <span className="font-display text-gold" aria-hidden>
@@ -121,7 +120,7 @@ export default async function TodayPage() {
           <Card
             title="Profit per 1K views"
             action={
-              <Link href="/decisions" className="text-[12px] text-ink-2 hover:text-ink">
+              <Link href="/decisions" className="text-[13px] text-ink-2 hover:text-ink">
                 Full profit check →
               </Link>
             }
@@ -158,7 +157,7 @@ export default async function TodayPage() {
                         <Link href={`/creators/${c.id}`} className="truncate font-bold hover:underline">
                           {c.name}
                         </Link>
-                        <span className="num shrink-0 text-[12px] text-ink-2">
+                        <span className="num shrink-0 text-[13px] text-ink-2">
                           day {w.day}/{w.targetDays}
                         </span>
                       </div>
@@ -174,8 +173,8 @@ export default async function TodayPage() {
           <Card title="Village news" flush>
             <ul className="divide-y divide-line">
               {feed.map((a) => (
-                <li key={a.id} className="flex gap-3 px-4 py-2 text-[13px]">
-                  <span className="num w-14 shrink-0 text-[11px] leading-5 text-muted">{relative(a.at)}</span>
+                <li key={a.id} className="flex gap-3 px-4 py-2 text-[14px]">
+                  <span className="num w-14 shrink-0 text-[12px] leading-5 text-muted">{relative(a.at)}</span>
                   {a.creatorId ? (
                     <Link href={`/creators/${a.creatorId}`} className="hover:underline">
                       {a.message}

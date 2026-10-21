@@ -106,7 +106,7 @@ async function DecisionsPageContent({ searchParams }: { searchParams: Promise<{ 
                     <Link href={`/creators/${e.creatorId}`} className="font-medium hover:underline">
                       {e.name}
                     </Link>
-                    <div className="text-[12px] text-muted">{tier ?? "Standard"} tier</div>
+                    <div className="text-[13px] text-muted">{tier ?? "Standard"} tier</div>
                   </Td>
                   <Td>
                     <StageBadge stage={e.stage} />
@@ -131,7 +131,7 @@ async function DecisionsPageContent({ searchParams }: { searchParams: Promise<{ 
                   </Td>
                   <Td right mono className="whitespace-nowrap">
                     <div>{usd2(e.revenuePer1kCents)}</div>
-                    <div className="text-[11px] text-muted">
+                    <div className="text-[12px] text-muted">
                       {usd2(e.revenuePer1kLow)}–{usd2(e.revenuePer1kHigh)}
                     </div>
                   </Td>
@@ -142,19 +142,19 @@ async function DecisionsPageContent({ searchParams }: { searchParams: Promise<{ 
                     {e.views > 0 ? (
                       <>
                         <MarginBar revenue={e.revenuePer1kCents} cost={d.costPer1kCents} scale={scale} low={e.revenuePer1kLow} high={e.revenuePer1kHigh} />
-                        {d.marginPct !== null && <div className="num mt-0.5 text-[11px] text-muted">{d.marginPct}% margin{d.trendPct !== null && ` · views ${d.trendPct >= 0 ? "+" : ""}${d.trendPct}%`}</div>}
+                        {d.marginPct !== null && <div className="num mt-0.5 text-[12px] text-muted">{d.marginPct}% margin{d.trendPct !== null && ` · views ${d.trendPct >= 0 ? "+" : ""}${d.trendPct}%`}</div>}
                       </>
                     ) : (
-                      <span className="text-[12px] text-muted">No views yet</span>
+                      <span className="text-[13px] text-muted">No views yet</span>
                     )}
                   </Td>
                   <Td>
                     <details className="group">
                       <summary className="cursor-pointer list-none whitespace-nowrap">
                         <Badge tone={ACTION_TONE[d.action]}>{d.action}</Badge>
-                        <span className="ml-1 text-[11px] text-muted group-open:hidden">why</span>
+                        <span className="ml-1 text-[12px] text-muted group-open:hidden">why</span>
                       </summary>
-                      <ul className="mt-1.5 w-[240px] list-disc space-y-0.5 pl-4 text-[12px] text-ink-2">
+                      <ul className="mt-1.5 w-[240px] list-disc space-y-0.5 pl-4 text-[13px] text-ink-2">
                         {d.reasons.map((r) => (
                           <li key={r}>{r}</li>
                         ))}
@@ -175,7 +175,7 @@ async function DecisionsPageContent({ searchParams }: { searchParams: Promise<{ 
                       <details className="group/cut text-left">
                         <summary className={cx(d.action === "cut" ? btnDanger : btn, btnSm, "cursor-pointer list-none")}>Cut</summary>
                         <div className="mt-1.5 w-56 rounded-md border border-line bg-sunken p-2.5">
-                          <p className="mb-2 text-[12px] text-ink-2">Move {e.name} to cut? They stop getting briefs. Videos already posted still settle on their next statement.</p>
+                          <p className="mb-2 text-[13px] text-ink-2">Move {e.name} to cut? They stop getting briefs. Videos already posted still settle on their next statement.</p>
                           <ActionForm action={cutCreatorAction}>
                             <input type="hidden" name="id" value={e.creatorId} />
                             <input type="hidden" name="name" value={e.name} />
@@ -194,7 +194,7 @@ async function DecisionsPageContent({ searchParams }: { searchParams: Promise<{ 
         )}
       </Card>
 
-      <p className="mt-3 text-[12px] text-muted">
+      <p className="mt-3 text-[13px] text-muted">
         Revenue per 1K comes from the last 90 days of{" "}
         <Link href="/attribution" className="underline">
           attribution

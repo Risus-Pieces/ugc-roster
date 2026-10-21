@@ -4,15 +4,15 @@ import { useState } from "react";
 import { cx, input, label } from "@/components/ui";
 import { KeepForm, KeepSubmit, type ActionResult } from "@/components/client";
 
-const inp = cx(input, "!py-2.5 !text-[16px]");
-const lab = cx(label, "!text-[13px]");
+const inp = cx(input, "!py-2.5 !text-[17px]");
+const lab = cx(label, "!text-[14px]");
 
 function F({ l, hint, children }: { l: string; hint?: string; children: React.ReactNode }) {
   return (
     <label className="block">
       <span className={lab}>{l}</span>
       {children}
-      {hint && <span className="mt-1 block text-[12px] text-muted">{hint}</span>}
+      {hint && <span className="mt-1 block text-[13px] text-muted">{hint}</span>}
     </label>
   );
 }
@@ -38,14 +38,14 @@ export function TaxForm({ action, token, defaultType, citizenship }: { action: (
             role="radio"
             aria-checked={type === t}
             onClick={() => setType(t)}
-            className={cx("rounded-md px-3 py-2 text-left text-[14px] transition-colors", type === t ? "bg-panel font-medium shadow-sm" : "text-ink-2 hover:text-ink")}
+            className={cx("rounded-md px-3 py-2 text-left text-[15px] transition-colors", type === t ? "bg-panel font-medium shadow-sm" : "text-ink-2 hover:text-ink")}
           >
-            <span className="num block text-[12px] text-muted">{t}</span>
+            <span className="num block text-[13px] text-muted">{t}</span>
             {l}
           </button>
         ))}
       </div>
-      <p className="text-[12px] text-muted">
+      <p className="text-[13px] text-muted">
         {type === "W-9" ? "US citizens and residents (including green card holders) fill in a W-9." : "Everyone outside the US fills in a W-8BEN, so payments aren't taxed by the US."}
       </p>
 
@@ -100,7 +100,7 @@ export function TaxForm({ action, token, defaultType, citizenship }: { action: (
           <F l="Foreign tax ID" hint="Your tax number at home (e.g. TIN, NIN, UTR). Encrypted on submit — we only show the last 4.">
             <input name="tin" inputMode="text" autoComplete="off" className={cx(inp, "num")} />
           </F>
-          <label className="flex items-start gap-2.5 text-[14px]">
+          <label className="flex items-start gap-2.5 text-[15px]">
             <input type="checkbox" name="noForeignTin" className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--ink)]" />
             <span>My country doesn&apos;t issue tax IDs to individuals</span>
           </label>
@@ -115,7 +115,7 @@ export function TaxForm({ action, token, defaultType, citizenship }: { action: (
         </>
       )}
 
-      <label className="flex items-start gap-2.5 rounded-md bg-sunken p-3 text-[13px] leading-snug">
+      <label className="flex items-start gap-2.5 rounded-md bg-sunken p-3 text-[14px] leading-snug">
         <input type="checkbox" name="certify" required className="mt-0.5 h-5 w-5 shrink-0 accent-[var(--ink)]" />
         <span>
           {type === "W-9"
@@ -126,7 +126,7 @@ export function TaxForm({ action, token, defaultType, citizenship }: { action: (
       <F l="Signature — type your full legal name">
         <input name="signatureName" required autoComplete="name" className={inp} />
       </F>
-      <KeepSubmit variant="primary" className="w-full !py-2.5 !text-[15px]" pendingText="Submitting…">
+      <KeepSubmit variant="primary" className="w-full !py-2.5 !text-[16px]" pendingText="Submitting…">
         Submit {type}
       </KeepSubmit>
     </KeepForm>

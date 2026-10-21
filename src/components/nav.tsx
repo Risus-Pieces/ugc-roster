@@ -6,7 +6,7 @@ import { cx } from "./ui";
 import { Sprite, STEP_SPRITES } from "./sprites";
 import { signOut } from "@/app/login/actions";
 
-// The creator lifecycle is a real sequence, so the groups are numbered.
+// Groups follow the creator lifecycle, top to bottom. `step` picks each group's sprite.
 export const NAV = [
   { step: "01", group: "Find", items: [{ href: "/discover", label: "Discover" }, { href: "/creators", label: "Creators" }] },
   { step: "02", group: "Reach", items: [{ href: "/outreach", label: "Outreach" }, { href: "/pipeline", label: "Pipeline" }, { href: "/referrals", label: "Referrals" }] },
@@ -38,9 +38,9 @@ export function SideNavStatic() {
 
 function NavList({ path, counts }: { path: string; counts?: Record<string, number> }) {
   const item = (active: boolean) =>
-    cx("flex items-center justify-between px-2 py-1 font-bold", active ? "bg-panel text-ink px-frame" : "text-on-wood hover:bg-wood-dark/50");
+    cx("flex items-center justify-between px-2.5 py-1 font-bold", active ? "bg-panel text-ink px-frame" : "text-on-wood hover:bg-wood-dark/50");
   return (
-    <nav className="space-y-3 text-[13px]">
+    <nav className="space-y-3 text-[14px]">
       <Link href="/" className={item(path === "/")}>
         <span className="flex items-center gap-2">
           <Sprite name="sun" scale={2} />
@@ -49,11 +49,9 @@ function NavList({ path, counts }: { path: string; counts?: Record<string, numbe
       </Link>
       {NAV.map((g) => (
         <div key={g.group}>
-          <div className="mb-1 flex items-center gap-2 px-2 font-display text-[12px] uppercase tracking-[0.14em] text-on-wood-2">
+          <div className="mb-1 flex items-center gap-2 px-2 text-[13px] font-extrabold text-on-wood-2">
             <Sprite name={STEP_SPRITES[g.step]} scale={2} />
-            <span>
-              {g.step} {g.group}
-            </span>
+            {g.group}
           </div>
           <div className="space-y-0.5 pl-6">
             {g.items.map((i) => {
@@ -77,7 +75,7 @@ function NavList({ path, counts }: { path: string; counts?: Record<string, numbe
           </span>
         </Link>
         <form action={signOut}>
-          <button type="submit" className="mt-1 w-full px-2 py-1 text-left text-[12px] font-bold text-on-wood-2 hover:text-on-wood">
+          <button type="submit" className="mt-1 w-full px-2 py-1 text-left text-[13px] font-bold text-on-wood-2 hover:text-on-wood">
             Sign out
           </button>
         </form>

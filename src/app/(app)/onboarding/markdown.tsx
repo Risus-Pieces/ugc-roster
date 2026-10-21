@@ -45,7 +45,7 @@ export function Markdown({ source, className }: { source: string; className?: st
     if (line.startsWith("## ")) {
       flush();
       blocks.push(
-        <h3 key={blocks.length} className="mt-5 mb-1 font-display text-[15px] font-bold tracking-[-0.01em]">
+        <h3 key={blocks.length} className="mt-5 mb-1 font-display text-[16px] font-bold tracking-[-0.01em]">
           {inline(line.slice(3))}
         </h3>,
       );

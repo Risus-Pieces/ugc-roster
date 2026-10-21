@@ -14,8 +14,8 @@ export function DraftFields({
   /** Larger inputs for the mobile creator portal (16px text avoids iOS zoom). */
   roomy?: boolean;
 }) {
-  const inp = cx(input, roomy && "!py-2.5 !text-[16px]");
-  const lab = cx(label, roomy && "!text-[13px]");
+  const inp = cx(input, roomy && "!py-2.5 !text-[17px]");
+  const lab = cx(label, roomy && "!text-[14px]");
   return (
     <div className="space-y-3">
       {creators && (
@@ -86,7 +86,7 @@ export function DraftFields({
 
 function Toggle({ name, children, roomy }: { name: string; children: React.ReactNode; roomy?: boolean }) {
   return (
-    <label className={cx("flex cursor-pointer items-start gap-2.5", roomy ? "text-[15px]" : "text-[13px]")}>
+    <label className={cx("flex cursor-pointer items-start gap-2.5", roomy ? "text-[16px]" : "text-[14px]")}>
       <input type="checkbox" name={name} className={cx("mt-0.5 shrink-0 accent-[var(--ink)]", roomy ? "h-5 w-5" : "h-4 w-4")} />
       <span>{children}</span>
     </label>

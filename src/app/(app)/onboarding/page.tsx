@@ -93,7 +93,7 @@ const CONTRACT_TONE: Record<string, Tone> = { draft: "neutral", sent: "tally", s
 
 function ContractsTab({ roster, contractOf, origin }: { roster: Creator[]; contractOf: Map<string, Contract>; origin: string }) {
   return (
-    <Card flush title="Contracts" action={<span className="hidden text-[12px] text-muted sm:inline">Creators sign in their portal with a typed name and explicit consent</span>}>
+    <Card flush title="Contracts" action={<span className="hidden text-[13px] text-muted sm:inline">Creators sign in their portal with a typed name and explicit consent</span>}>
       <ul className="divide-y divide-line">
         {roster.map((c) => {
           const k = contractOf.get(c.id);
@@ -106,11 +106,11 @@ function ContractsTab({ roster, contractOf, origin }: { roster: Creator[]; contr
                   </Link>
                   <StageBadge stage={c.stage} />
                 </div>
-                <div className="text-[12px]">
+                <div className="text-[13px]">
                   {k ? <Badge tone={CONTRACT_TONE[k.status]}>{k.status}</Badge> : <Badge tone="tally">no contract</Badge>}
                   <div className="mt-0.5 text-muted">{k?.status === "signed" ? `signed ${day(k.signedAt)}` : k?.status === "sent" ? `sent ${day(k.sentAt)}` : k ? `written ${day(k.createdAt)}` : "—"}</div>
                 </div>
-                <div className="min-w-0">{k ? <TermsSummary t={k.terms} /> : <span className="text-[13px] text-muted">Generate a contract from their rate card to get started.</span>}</div>
+                <div className="min-w-0">{k ? <TermsSummary t={k.terms} /> : <span className="text-[14px] text-muted">Generate a contract from their rate card to get started.</span>}</div>
                 <div className="flex flex-wrap items-center gap-2 md:justify-end">
                   {k && (
                     <Link href={`/onboarding/contracts/${k.id}`} className={cx(btn, btnSm)}>
@@ -137,7 +137,7 @@ function ContractsTab({ roster, contractOf, origin }: { roster: Creator[]; contr
                 </div>
               </div>
               <details className="group mt-2">
-                <summary className="cursor-pointer select-none text-[12px] text-ink-2 hover:text-ink">{k?.status === "signed" ? "Write a new version" : k ? "Edit terms & regenerate" : "Generate with custom terms"}</summary>
+                <summary className="cursor-pointer select-none text-[13px] text-ink-2 hover:text-ink">{k?.status === "signed" ? "Write a new version" : k ? "Edit terms & regenerate" : "Generate with custom terms"}</summary>
                 <ActionForm action={generateContractAction} className="mt-2 rounded-md bg-sunken p-3">
                   <input type="hidden" name="creatorId" value={c.id} />
                   <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
@@ -166,7 +166,7 @@ function ContractsTab({ roster, contractOf, origin }: { roster: Creator[]; contr
                     <SubmitButton className={btnSm} variant="primary" pendingText="Writing…">
                       {k ? "Regenerate contract" : "Generate contract"}
                     </SubmitButton>
-                    <span className="text-[12px] text-muted">Pay terms come from the creator&apos;s rate card. {k && k.status !== "signed" ? "The current unsigned version is voided." : ""}</span>
+                    <span className="text-[13px] text-muted">Pay terms come from the creator&apos;s rate card. {k && k.status !== "signed" ? "The current unsigned version is voided." : ""}</span>
                   </div>
                 </ActionForm>
               </details>
@@ -200,7 +200,7 @@ function TaxTab({ roster, taxOf, origin }: { roster: Creator[]; taxOf: Map<strin
                   <Link href={`/creators/${c.id}`} className="font-medium hover:underline">
                     {c.name}
                   </Link>
-                  <div className="num text-[11px] text-muted">{c.country ?? "country unknown"}</div>
+                  <div className="num text-[12px] text-muted">{c.country ?? "country unknown"}</div>
                 </Td>
                 <Td mono>{f?.formType ?? taxFormFor(c.country)}</Td>
                 <Td>{f ? <Badge tone={TAX_TONE[f.status]}>{f.status}</Badge> : <Badge>not requested</Badge>}</Td>
@@ -208,8 +208,8 @@ function TaxTab({ roster, taxOf, origin }: { roster: Creator[]; taxOf: Map<strin
                   {f?.legalName ?? <span className="text-muted">—</span>}
                   {f?.data && Object.keys(f.data).length > 0 && (
                     <details className="mt-1">
-                      <summary className="cursor-pointer text-[12px] text-ink-2">Details</summary>
-                      <dl className="mt-1 space-y-0.5 text-[12px]">
+                      <summary className="cursor-pointer text-[13px] text-ink-2">Details</summary>
+                      <dl className="mt-1 space-y-0.5 text-[13px]">
                         {Object.entries(f.data).map(([k, v]) => (
                           <div key={k} className="flex gap-2">
                             <dt className="shrink-0 text-muted">{humanize(k)}</dt>
@@ -227,9 +227,9 @@ function TaxTab({ roster, taxOf, origin }: { roster: Creator[]; taxOf: Map<strin
                   )}
                 </Td>
                 <Td mono>{f?.tinLast4 ? `•••• ${f.tinLast4}` : "—"}</Td>
-                <Td className="whitespace-nowrap text-[12px] text-ink-2">{f?.submittedAt ? day(f.submittedAt) : "—"}</Td>
+                <Td className="whitespace-nowrap text-[13px] text-ink-2">{f?.submittedAt ? day(f.submittedAt) : "—"}</Td>
                 <Td>
-                  {f?.status === "verified" ? <span className="text-[12px] text-muted">Not needed</span> : <CopyButton value={link} />}
+                  {f?.status === "verified" ? <span className="text-[13px] text-muted">Not needed</span> : <CopyButton value={link} />}
                 </Td>
                 <Td right>
                   <div className="flex justify-end gap-2">
@@ -278,7 +278,7 @@ function AccountsTab({ roster, accountsOf }: { roster: Creator[]; accountsOf: Ma
       <Notice>
         Creators connect each account through the platform&apos;s official login from their portal. Views, likes and posts then come straight from the platform API — no screenshots to chase or check for edits.
       </Notice>
-      <div className="flex flex-wrap gap-2 text-[12px]">
+      <div className="flex flex-wrap gap-2 text-[13px]">
         {PLATFORMS.map((p) => {
           const live = connectedProviders[p].configured();
           return (
@@ -302,7 +302,7 @@ function AccountsTab({ roster, accountsOf }: { roster: Creator[]; accountsOf: Ma
                     </Link>
                   </Td>
                   <Td className="text-muted" />
-                  <td colSpan={5} className="px-3 py-2 text-[13px] text-muted">
+                  <td colSpan={5} className="px-3 py-2 text-[14px] text-muted">
                     No accounts yet — the creator can connect one from their portal.
                   </td>
                 </tr>,
@@ -335,13 +335,13 @@ function AccountsTab({ roster, accountsOf }: { roster: Creator[]; accountsOf: Ma
                   {a.connected ? (
                     <span className="flex items-center gap-1.5">
                       <Badge tone={a.accessTokenEnc ? "profit" : "info"}>{a.accessTokenEnc ? "Official login" : "Demo connection"}</Badge>
-                      <span className="text-[11px] text-muted">{day(a.connectedAt)}</span>
+                      <span className="text-[12px] text-muted">{day(a.connectedAt)}</span>
                     </span>
                   ) : (
                     <Badge tone="tally">Not connected</Badge>
                   )}
                 </Td>
-                <Td className="whitespace-nowrap text-[12px] text-ink-2">
+                <Td className="whitespace-nowrap text-[13px] text-ink-2">
                   <span title={dateTime(a.lastSyncedAt)}>{a.lastSyncedAt ? relative(a.lastSyncedAt) : "never"}</span>
                 </Td>
                 <Td right>
@@ -384,7 +384,7 @@ function WarmupTab({ roster }: { roster: Creator[] }) {
                   <StageBadge stage={c.stage} />
                 </div>
                 <div className="min-w-0">
-                  <div className="mb-1 flex items-baseline justify-between gap-2 text-[12px]">
+                  <div className="mb-1 flex items-baseline justify-between gap-2 text-[13px]">
                     <span className={cx(w.started && !w.done ? "text-tally" : "text-ink-2")}>
                       {!w.started ? "Not started" : w.done ? `Done — ${w.targetDays} days completed` : `Day ${w.day} of ${w.targetDays}`}
                     </span>
@@ -394,7 +394,7 @@ function WarmupTab({ roster }: { roster: Creator[] }) {
                 </div>
                 <ActionForm action={startWarmupAction} className="flex items-center gap-2">
                   <input type="hidden" name="creatorId" value={c.id} />
-                  <label className="flex items-center gap-1.5 text-[12px] text-ink-2">
+                  <label className="flex items-center gap-1.5 text-[13px] text-ink-2">
                     <span>Target</span>
                     <input name="days" type="number" min={1} max={60} defaultValue={c.warmupTargetDays} className={cx(input, "num w-16")} aria-label="Target days" />
                     <span>days</span>

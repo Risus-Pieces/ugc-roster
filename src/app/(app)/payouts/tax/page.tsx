@@ -89,7 +89,7 @@ async function TaxPageContent({ searchParams }: { searchParams: Promise<{ year?:
                     <Link href={`/creators/${r.creator.id}`} className="font-medium hover:underline">
                       {r.creator.name}
                     </Link>
-                    {r.w9?.legalName && r.w9.legalName !== r.creator.name && <div className="text-[12px] text-muted">{r.w9.legalName}</div>}
+                    {r.w9?.legalName && r.w9.legalName !== r.creator.name && <div className="text-[13px] text-muted">{r.w9.legalName}</div>}
                   </Td>
                   <Td mono className="text-ink-2">
                     {r.creator.country ?? "—"}
@@ -107,18 +107,18 @@ async function TaxPageContent({ searchParams }: { searchParams: Promise<{ year?:
                     {r.required ? (
                       <Badge tone="tally">Required</Badge>
                     ) : (
-                      <span className="text-[12px] text-muted">{!isUS ? "No (non-US)" : `No, under ${usd(threshold)}`}</span>
+                      <span className="text-[13px] text-muted">{!isUS ? "No (non-US)" : `No, under ${usd(threshold)}`}</span>
                     )}
                   </Td>
                   <Td className="whitespace-nowrap">
                     {!isUS ? (
-                      <span className="text-[12px] text-ink-2">Non-US (W-8BEN) · no 1099</span>
+                      <span className="text-[13px] text-ink-2">Non-US (W-8BEN) · no 1099</span>
                     ) : r.w9 ? (
-                      <span className="text-[12px]">
+                      <span className="text-[13px]">
                         W-9 <span className="num">{r.w9.tinLast4 ? `•••${r.w9.tinLast4}` : "no TIN"}</span> <span className="text-muted">· {r.w9.status}</span>
                       </span>
                     ) : (
-                      <span className={cx("text-[12px]", r.required ? "text-loss" : "text-tally")}>No W-9 on file</span>
+                      <span className={cx("text-[13px]", r.required ? "text-loss" : "text-tally")}>No W-9 on file</span>
                     )}
                   </Td>
                 </tr>
@@ -129,7 +129,7 @@ async function TaxPageContent({ searchParams }: { searchParams: Promise<{ year?:
       </Card>
 
       <Card title="Before you file" className="mt-4">
-        <ul className="list-disc space-y-1.5 pl-5 text-[13px] text-ink-2">
+        <ul className="list-disc space-y-1.5 pl-5 text-[14px] text-ink-2">
           <li>
             A 1099-NEC is needed for each US creator you paid {usd(threshold)} or more in {year} ({year >= 2026 ? "the threshold rose from $600 to $2,000 for payments made from 2026" : "the threshold is $600 for payments made through 2025"}). File with the IRS and send copies to creators by January 31.
           </li>
@@ -139,7 +139,7 @@ async function TaxPageContent({ searchParams }: { searchParams: Promise<{ year?:
           <li>This is a working list, not tax advice. Confirm thresholds, state filing rules and edge cases with your accountant.</li>
         </ul>
         <div className="mt-3">
-          <a href={`/payouts/tax/export?year=${year}&all=1`} className="text-[12px] text-ink-2 underline hover:text-ink" download>
+          <a href={`/payouts/tax/export?year=${year}&all=1`} className="text-[13px] text-ink-2 underline hover:text-ink" download>
             Export every creator paid in {year}, not just required ones
           </a>
         </div>

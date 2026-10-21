@@ -42,22 +42,22 @@ export function ViewsChart({ posts }: { posts: Bar[] }) {
           })}
           <line x1={0} x2={W} y1={100 - medPct} y2={100 - medPct} className="stroke-tally" strokeWidth={1.5} strokeDasharray="5 4" vectorEffect="non-scaling-stroke" />
         </svg>
-        <div className="num pointer-events-none absolute right-0 rounded bg-panel/90 px-1 text-[11px] text-tally" style={{ bottom: `calc(${medPct}% + 2px)` }}>
+        <div className="num pointer-events-none absolute right-0 rounded bg-panel/90 px-1 text-[12px] text-tally" style={{ bottom: `calc(${medPct}% + 2px)` }}>
           median {compact(med)}
         </div>
         {posts.map((p, i) =>
           p.views > yMax ? (
-            <div key={p.id} className="num pointer-events-none absolute top-0 -translate-x-1/2 text-[10px] text-tally" style={{ left: `${((i + 0.5) / n) * 100}%` }}>
+            <div key={p.id} className="num pointer-events-none absolute top-0 -translate-x-1/2 text-[11px] text-tally" style={{ left: `${((i + 0.5) / n) * 100}%` }}>
               {compact(p.views)}↑
             </div>
           ) : null,
         )}
       </div>
-      <div className="num mt-1 flex justify-between border-t border-line pt-1 text-[11px] text-muted">
+      <div className="num mt-1 flex justify-between border-t border-line pt-1 text-[12px] text-muted">
         <span>{day(posts[0].postedAt)}</span>
         <span>{day(posts[n - 1].postedAt)}</span>
       </div>
-      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-2">
+      <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-[13px] text-ink-2">
         <Legend className="bg-ink-2/35">post</Legend>
         {anyCampaign && <Legend className="bg-info/70">campaign post</Legend>}
         {anyCapped && <Legend className="bg-tally/70">off the scale — a one-off hit we don&apos;t pay or rank on</Legend>}

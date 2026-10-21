@@ -130,7 +130,7 @@ async function TrackingPageContent({ searchParams }: { searchParams: Promise<{ d
         </Card>
 
         <Card title="How tracking works">
-          <ul className="space-y-3 text-[13px] text-ink-2">
+          <ul className="space-y-3 text-[14px] text-ink-2">
             <li>
               <span className="font-medium text-ink">New posts are found automatically.</span> Every connected account is checked on each sync (every 6 hours, or when you press Sync). Posts with a paid-partnership label or #ad after the creator got product access count as campaign posts.
             </li>
@@ -144,7 +144,7 @@ async function TrackingPageContent({ searchParams }: { searchParams: Promise<{ d
         </Card>
       </div>
 
-      <Card title="Recent campaign posts" action={<span className="text-[12px] text-muted">Latest {recent.length} · credible views</span>} flush>
+      <Card title="Recent campaign posts" action={<span className="text-[13px] text-muted">Latest {recent.length} · credible views</span>} flush>
         {recent.length === 0 ? (
           <div className="p-4">
             <Empty title="No campaign posts yet">Posts appear here once a creator in trial or active posts with the paid-partnership label. Connect their accounts during onboarding, then press Sync all accounts.</Empty>
@@ -180,7 +180,7 @@ async function TrackingPageContent({ searchParams }: { searchParams: Promise<{ d
                 <Td>
                   <PlatformTag platform={p.platform} />
                 </Td>
-                <Td mono className="whitespace-nowrap text-[12px] text-ink-2">
+                <Td mono className="whitespace-nowrap text-[13px] text-ink-2">
                   {dateTime(p.postedAt)}
                 </Td>
                 <Td>
@@ -214,7 +214,7 @@ async function TrackingPageContent({ searchParams }: { searchParams: Promise<{ d
                 </Td>
                 <Td right>
                   {p.url ? (
-                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-[12px] text-ink-2 hover:text-ink">
+                    <a href={p.url} target="_blank" rel="noopener noreferrer" className="whitespace-nowrap text-[13px] text-ink-2 hover:text-ink">
                       Open ↗
                     </a>
                   ) : (

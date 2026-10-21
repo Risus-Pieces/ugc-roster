@@ -49,18 +49,18 @@ export function groupBy<T, K>(rows: T[], key: (r: T) => K) {
 
 /** Authenticity verdict; the flags behind it show on hover and expand on click. */
 export function Authenticity({ score }: { score?: Pick<CreatorScore, "authenticityVerdict" | "authenticityScore" | "authenticityFlags"> | null }) {
-  if (!score) return <span className="whitespace-nowrap text-[12px] text-muted">not scored</span>;
+  if (!score) return <span className="whitespace-nowrap text-[13px] text-muted">not scored</span>;
   const flags = score.authenticityFlags ?? [];
   if (!flags.length) return <VerdictBadge verdict={score.authenticityVerdict} score={score.authenticityScore} />;
   return (
     <details title={flags.join(" · ")}>
       <summary className="flex cursor-pointer list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden">
         <VerdictBadge verdict={score.authenticityVerdict} score={score.authenticityScore} />
-        <span className="num whitespace-nowrap text-[11px] text-muted">
+        <span className="num whitespace-nowrap text-[12px] text-muted">
           {flags.length} flag{flags.length > 1 ? "s" : ""}
         </span>
       </summary>
-      <ul className="mt-1 max-w-[280px] list-disc space-y-0.5 pl-4 text-[12px] text-ink-2">
+      <ul className="mt-1 max-w-[280px] list-disc space-y-0.5 pl-4 text-[13px] text-ink-2">
         {flags.map((f) => (
           <li key={f}>{f}</li>
         ))}

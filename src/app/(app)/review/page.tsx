@@ -68,7 +68,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
             rows.map((r) => <ReviewCard key={r.id} r={r} creatorName={nameOf.get(r.creatorId) ?? "Unknown creator"} brief={r.briefId ? briefOf.get(r.briefId) : undefined} />)
           )}
           {total > rows.length && (
-            <p className="text-[12px] text-muted">
+            <p className="text-[13px] text-muted">
               Showing the {rows.length} most recent of <span className="num">{total}</span>.
             </p>
           )}
@@ -76,7 +76,7 @@ export default async function ReviewPage({ searchParams }: { searchParams: Promi
 
         <div className="space-y-3">
           <Card title="Submit a draft on a creator's behalf">
-            <p className="mb-3 text-[13px] text-ink-2">For drafts that arrive by email or DM. It runs the same checks and lands in the pending queue.</p>
+            <p className="mb-3 text-[14px] text-ink-2">For drafts that arrive by email or DM. It runs the same checks and lands in the pending queue.</p>
             <KeepForm action={submitOnBehalfAction} resetOnSuccess>
               <DraftFields creators={roster} />
               <KeepSubmit variant="primary" className="mt-3 w-full" pendingText="Running checks…">
@@ -101,12 +101,12 @@ function ReviewCard({ r, creatorName, brief }: { r: Review; creatorName: string;
           {creatorName}
         </Link>
         <PlatformTag platform={r.platform} />
-        <span className="text-[12px] text-muted" title={dateTime(r.createdAt)}>
+        <span className="text-[13px] text-muted" title={dateTime(r.createdAt)}>
           submitted {relative(r.createdAt)}
         </span>
         <span className="ml-auto flex items-center gap-2">
           {r.overall && (
-            <span className="flex items-center gap-1 text-[12px] text-ink-2">
+            <span className="flex items-center gap-1 text-[13px] text-ink-2">
               Checks <CheckBadge status={r.overall} />
             </span>
           )}
@@ -117,7 +117,7 @@ function ReviewCard({ r, creatorName, brief }: { r: Review; creatorName: string;
       <div className="grid gap-4 p-4 lg:grid-cols-[1fr_minmax(0,320px)]">
         <div className="min-w-0 space-y-3">
           {brief && (
-            <div className="text-[12px] text-ink-2">
+            <div className="text-[13px] text-ink-2">
               Brief <span className="num">{brief.date}</span> · {brief.format}: <span className="text-ink">&ldquo;{brief.hook}&rdquo;</span>
             </div>
           )}
@@ -128,7 +128,7 @@ function ReviewCard({ r, creatorName, brief }: { r: Review; creatorName: string;
           {r.transcript && (
             <div>
               <div className={label}>Transcript</div>
-              <p className="max-h-44 overflow-y-auto whitespace-pre-line break-words rounded-md bg-sunken px-3 py-2 text-[13px] text-ink-2">{r.transcript}</p>
+              <p className="max-h-44 overflow-y-auto whitespace-pre-line break-words rounded-md bg-sunken px-3 py-2 text-[14px] text-ink-2">{r.transcript}</p>
             </div>
           )}
           <div className="flex flex-wrap gap-1.5">
@@ -136,7 +136,7 @@ function ReviewCard({ r, creatorName, brief }: { r: Review; creatorName: string;
             <Badge tone={r.containsAiFootage ? "info" : "neutral"}>{r.containsAiFootage ? "Contains AI footage" : "No AI footage"}</Badge>
             {r.containsAiFootage && <Badge tone={r.aiLabelToggle ? "profit" : "loss"}>AI label {r.aiLabelToggle ? "on" : "off"}</Badge>}
             {r.draftUrl && (
-              <a href={r.draftUrl} target="_blank" rel="noreferrer noopener" className="text-[12px] text-info hover:underline">
+              <a href={r.draftUrl} target="_blank" rel="noreferrer noopener" className="text-[13px] text-info hover:underline">
                 Open draft ↗
               </a>
             )}
@@ -144,14 +144,14 @@ function ReviewCard({ r, creatorName, brief }: { r: Review; creatorName: string;
         </div>
 
         <ul className="space-y-2 lg:border-l lg:border-line lg:pl-4">
-          {checks.length === 0 && <li className="text-[13px] text-muted">No checks recorded.</li>}
+          {checks.length === 0 && <li className="text-[14px] text-muted">No checks recorded.</li>}
           {checks.map((c) => (
-            <li key={c.key} className="text-[13px]">
+            <li key={c.key} className="text-[14px]">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-medium">{c.label}</span>
                 <CheckBadge status={c.status} />
               </div>
-              <p className={cx("mt-0.5 text-[12px] leading-snug", c.status === "fail" ? "text-loss" : c.status === "warn" ? "text-ink-2" : "text-muted")}>{c.detail}</p>
+              <p className={cx("mt-0.5 text-[13px] leading-snug", c.status === "fail" ? "text-loss" : c.status === "warn" ? "text-ink-2" : "text-muted")}>{c.detail}</p>
             </li>
           ))}
         </ul>
@@ -178,8 +178,8 @@ function ReviewCard({ r, creatorName, brief }: { r: Review; creatorName: string;
         </ActionForm>
       ) : (
         (r.reviewerNotes || r.decidedAt) && (
-          <footer className="border-t border-line px-4 py-2.5 text-[13px] text-ink-2">
-            {r.decidedAt && <span className="num text-[12px] text-muted">Decided {dateTime(r.decidedAt)}</span>}
+          <footer className="border-t border-line px-4 py-2.5 text-[14px] text-ink-2">
+            {r.decidedAt && <span className="num text-[13px] text-muted">Decided {dateTime(r.decidedAt)}</span>}
             {r.reviewerNotes && <p className="mt-0.5 whitespace-pre-line">{r.reviewerNotes}</p>}
           </footer>
         )

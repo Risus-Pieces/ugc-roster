@@ -6,7 +6,7 @@ import { cx, input, label } from "@/components/ui";
 import { joinAction, type JoinResult } from "./actions";
 
 // 16px on phones so iOS doesn't zoom into the field on focus.
-const field = cx(input, "py-2 text-[16px] sm:text-[13px]");
+const field = cx(input, "py-2 text-[17px] sm:text-[14px]");
 
 const COUNTRIES: [string, string][] = [
   ["US", "United States"],
@@ -96,11 +96,11 @@ export function JoinForm({ code, inviter }: { code: string; inviter: string }) {
           <option value="Other">Somewhere else</option>
         </select>
       </label>
-      {state && !state.ok && <p className="text-[13px] text-loss">{state.message}</p>}
-      <SubmitButton variant="primary" pendingText="Sending…" className="w-full !py-2.5 !text-[14px]">
+      {state && !state.ok && <p className="text-[14px] text-loss">{state.message}</p>}
+      <SubmitButton variant="primary" pendingText="Sending…" className="w-full !py-2.5 !text-[15px]">
         Join
       </SubmitButton>
-      <p className="text-center text-[12px] text-muted">We only use your email to talk about working together.</p>
+      <p className="text-center text-[13px] text-muted">We only use your email to talk about working together.</p>
     </form>
   );
 }

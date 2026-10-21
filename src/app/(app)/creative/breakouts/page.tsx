@@ -45,7 +45,7 @@ export default async function BreakoutsPage() {
         description="When a roster video takes off, variations are written the same day so every creator can ride the trend while it lasts."
       />
 
-      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-line bg-panel px-4 py-3 text-[13px]">
+      <div className="mb-4 flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg border border-line bg-panel px-4 py-3 text-[14px]">
         <span className="text-muted">Alert threshold</span>
         <span>
           <span className="num font-medium">{compact(t.minViews)}+</span> views
@@ -56,7 +56,7 @@ export default async function BreakoutsPage() {
         <span>
           within <span className="num font-medium">{t.maxAgeHours}h</span> of posting
         </span>
-        <Link href="/settings" className="ml-auto text-[12px] text-ink-2 hover:text-ink">
+        <Link href="/settings" className="ml-auto text-[13px] text-ink-2 hover:text-ink">
           Change in settings →
         </Link>
       </div>
@@ -79,7 +79,7 @@ export default async function BreakoutsPage() {
 
       {dismissed.length > 0 && (
         <details className="mt-6">
-          <summary className="cursor-pointer text-[13px] text-ink-2 hover:text-ink">
+          <summary className="cursor-pointer text-[14px] text-ink-2 hover:text-ink">
             Dismissed <span className="num">({dismissed.length})</span>
           </summary>
           <div className="mt-3 space-y-4 opacity-80">
@@ -114,11 +114,11 @@ function BreakoutCard({ b, p, author, recipients }: { b: Breakout; p?: PostLite;
             <span className="font-medium">{who}</span>
           )}
           {p && <PlatformTag platform={p.platform} />}
-          <span className="text-[12px] text-muted" title={dateTime(b.detectedAt)}>
+          <span className="text-[13px] text-muted" title={dateTime(b.detectedAt)}>
             detected {relative(b.detectedAt)}
           </span>
         </div>
-        <div className="mt-1 flex flex-wrap gap-x-4 text-[13px] text-ink-2">
+        <div className="mt-1 flex flex-wrap gap-x-4 text-[14px] text-ink-2">
           <span>
             <span className="num text-ink">{compact(b.views)}</span> views at detection
           </span>
@@ -146,7 +146,7 @@ function BreakoutCard({ b, p, author, recipients }: { b: Breakout; p?: PostLite;
             </>
           )}
           {b.status === "sent" && (
-            <p className="text-[13px] text-profit">
+            <p className="text-[14px] text-profit">
               Sent to <span className="num">{b.sentToCount}</span> creators as a breakout brief.{" "}
               <Link href="/creative/briefs" className={cx("text-ink-2 underline hover:text-ink", btnSm)}>
                 See today&apos;s briefs
@@ -159,12 +159,12 @@ function BreakoutCard({ b, p, author, recipients }: { b: Breakout; p?: PostLite;
           {b.variations.map((v, i) => (
             <li key={i} className="rounded-md border border-line bg-sunken/50 p-3">
               <div className="flex gap-2">
-                <span className="num mt-0.5 text-[11px] text-muted">{String(i + 1).padStart(2, "0")}</span>
+                <span className="num mt-0.5 text-[12px] text-muted">{String(i + 1).padStart(2, "0")}</span>
                 <div className="min-w-0">
                   <div className="font-display font-bold leading-snug">{v.hook}</div>
-                  <p className="mt-1 whitespace-pre-line break-words text-[13px] text-ink-2">{v.script}</p>
+                  <p className="mt-1 whitespace-pre-line break-words text-[14px] text-ink-2">{v.script}</p>
                   {v.onScreenText && (
-                    <p className="mt-1.5 text-[12px]">
+                    <p className="mt-1.5 text-[13px]">
                       <span className="text-muted">On-screen text: </span>
                       {v.onScreenText}
                     </p>

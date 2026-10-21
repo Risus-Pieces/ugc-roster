@@ -77,7 +77,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
       />
 
       {tab === "compose" && (
-        <p className="mb-3 text-[13px] text-ink-2">
+        <p className="mb-3 text-[14px] text-ink-2">
           <span className="num">
             {sentToday}/{ops.outreach.dailySendLimit}
           </span>{" "}
@@ -127,7 +127,7 @@ function FollowUpsTab({ due, days }: { due: Awaited<ReturnType<typeof followUpsD
           <SubmitButton variant="primary" pendingText="Writing…">
             Write follow-ups
           </SubmitButton>
-          <span className="text-[12px] text-muted">Drafts go to Compose so you can read them before they send.</span>
+          <span className="text-[13px] text-muted">Drafts go to Compose so you can read them before they send.</span>
         </div>
       </ActionForm>
     </Card>
@@ -197,10 +197,10 @@ async function RepliesTab() {
                     <ClassBadge c={m.classification} />
                   </span>
                 }
-                action={<span className="num text-[12px] text-muted">{relative(m.createdAt)}</span>}
+                action={<span className="num text-[13px] text-muted">{relative(m.createdAt)}</span>}
               >
                 {last && (
-                  <details className="mb-2 text-[12px] text-muted">
+                  <details className="mb-2 text-[13px] text-muted">
                     <summary className="cursor-pointer">
                       Your message · <span className="num">{day(last.sentAt ?? last.createdAt)}</span>
                       {last.subject ? ` · ${last.subject}` : ""}
@@ -208,7 +208,7 @@ async function RepliesTab() {
                     <p className="mt-1 whitespace-pre-wrap rounded-md border border-line px-3 py-2 text-ink-2">{last.body}</p>
                   </details>
                 )}
-                {m.subject && <div className="mb-1 text-[12px] text-muted">{m.subject}</div>}
+                {m.subject && <div className="mb-1 text-[13px] text-muted">{m.subject}</div>}
                 <blockquote className="whitespace-pre-wrap rounded-md bg-sunken px-3 py-2">{m.body}</blockquote>
 
                 <div className="mt-3 grid gap-4 xl:grid-cols-[1fr_240px]">
@@ -222,7 +222,7 @@ async function RepliesTab() {
                       <SubmitButton variant="primary" pendingText="Sending…">
                         Send reply
                       </SubmitButton>
-                      {m.classification === "not_interested" && <span className="text-[12px] text-muted">Sending also moves them to cut.</span>}
+                      {m.classification === "not_interested" && <span className="text-[13px] text-muted">Sending also moves them to cut.</span>}
                     </div>
                   </ActionForm>
                   <ActionForm action={bookCallAction} className="space-y-2" resetOnSuccess>
@@ -234,7 +234,7 @@ async function RepliesTab() {
                     <input name="link" placeholder={brand.bookingUrl} className={input} aria-label="Call link (optional)" />
                     <SubmitButton pendingText="Booking…">Book call</SubmitButton>
                     {nextCall && (
-                      <p className="text-[12px] text-ink-2">
+                      <p className="text-[13px] text-ink-2">
                         Booked: <span className="num">{dateTime(nextCall.scheduledAt)}</span>
                       </p>
                     )}
@@ -314,7 +314,7 @@ async function ComposeTab({ pick }: { pick: number }) {
 
   return (
     <div className="space-y-4">
-      <Card title="Pick prospects" action={<span className="num text-[12px] text-muted">{ranked.length} with email, not contacted</span>} flush>
+      <Card title="Pick prospects" action={<span className="num text-[13px] text-muted">{ranked.length} with email, not contacted</span>} flush>
         {ranked.length === 0 ? (
           <div className="p-4">
             <Empty
@@ -339,7 +339,7 @@ async function ComposeTab({ pick }: { pick: number }) {
                   Clear ticks
                 </Link>
               )}
-              <span className="text-[12px] text-muted">Sorted by median views.</span>
+              <span className="text-[13px] text-muted">Sorted by median views.</span>
             </div>
             <div className="max-h-[440px] overflow-y-auto">
               <Table head={["", "Creator", "Handle", { label: "Median views", align: "right" }, { label: "Worst 5 avg", align: "right" }, "Audience", "Email"]}>
@@ -388,13 +388,13 @@ async function ComposeTab({ pick }: { pick: number }) {
               <SubmitButton variant="primary" pendingText="Writing openers…">
                 Write openers
               </SubmitButton>
-              <span className="text-[12px] text-muted">Up to 25 at a time. Nothing is sent until you press Send.</span>
+              <span className="text-[13px] text-muted">Up to 25 at a time. Nothing is sent until you press Send.</span>
             </div>
           </TopMessageForm>
         )}
       </Card>
 
-      <Card title="Drafts" action={<span className="num text-[12px] text-muted">{draftRows.length}</span>} flush>
+      <Card title="Drafts" action={<span className="num text-[13px] text-muted">{draftRows.length}</span>} flush>
         {/* The form stays mounted when the list empties so the "N sent" result is still shown. */}
         <TopMessageForm action={draftsAction}>
           {draftRows.length === 0 ? (
@@ -402,7 +402,7 @@ async function ComposeTab({ pick }: { pick: number }) {
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2">
-                <span className="text-[12px] text-muted">Edit any draft, then send it on its own or send them all. Edits are kept either way.</span>
+                <span className="text-[13px] text-muted">Edit any draft, then send it on its own or send them all. Edits are kept either way.</span>
                 <SubmitButton variant="primary" name="intent" value="send-all" pendingText="Sending…">
                   Send all {draftRows.length}
                 </SubmitButton>
@@ -413,8 +413,8 @@ async function ComposeTab({ pick }: { pick: number }) {
                   const s = scores.get(d.creatorId);
                   return (
                     <li key={d.id} className="space-y-2 px-4 py-3">
-                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[12px]">
-                        <Link href={`/creators/${d.creatorId}`} className="text-[13px] font-medium hover:underline">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
+                        <Link href={`/creators/${d.creatorId}`} className="text-[14px] font-medium hover:underline">
                           {c?.name ?? "Unknown"}
                         </Link>
                         <span className="text-ink-2">{c?.email}</span>

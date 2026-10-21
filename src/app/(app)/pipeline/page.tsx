@@ -88,27 +88,27 @@ export default async function PipelinePage() {
       />
 
       <div className="mb-6 grid gap-4 lg:grid-cols-[1fr_380px]">
-        <Card title="Conversion" action={<span className="text-[12px] text-muted">share who reached the next stage</span>}>
+        <Card title="Conversion" action={<span className="text-[13px] text-muted">share who reached the next stage</span>}>
           <ol className="grid grid-cols-2 gap-3 sm:grid-cols-4">
             {FUNNEL.slice(1).map((s, j) => {
               const i = j + 1;
               const rate = i > 1 && reached[i - 1] ? reached[i] / reached[i - 1] : null;
               return (
                 <li key={s} className="rounded-md bg-sunken px-3 py-2">
-                  <div className="text-[12px] capitalize text-muted">{s}</div>
-                  <div className="num text-[20px] font-medium">{reached[i]}</div>
-                  <div className="text-[11px] font-bold leading-tight text-ink-2">{rate === null ? "reached out" : `${pct(rate, 0)} of ${FUNNEL[i - 1]}`}</div>
+                  <div className="text-[13px] capitalize text-muted">{s}</div>
+                  <div className="font-display text-[20px] font-medium tabular-nums">{reached[i]}</div>
+                  <div className="text-[12px] font-bold leading-tight text-ink-2">{rate === null ? "reached out" : `${pct(rate, 0)} of ${FUNNEL[i - 1]}`}</div>
                 </li>
               );
             })}
           </ol>
-          <p className="mt-3 text-[12px] text-muted">
+          <p className="mt-3 text-[13px] text-muted">
             Contacted to active: <span className="num text-ink-2">{reached[1] ? pct(reached[4] / reached[1], 0) : "—"}</span>. Referral sign-ups enter at replied. Cut creators count toward the
             furthest stage they reached.
           </p>
         </Card>
 
-        <Card title="Upcoming calls" action={<span className="num text-[12px] text-muted">{upcoming.length}</span>} flush>
+        <Card title="Upcoming calls" action={<span className="num text-[13px] text-muted">{upcoming.length}</span>} flush>
           {upcoming.length === 0 ? (
             <p className="p-4 text-ink-2">
               No calls booked. Book one from a reply in{" "}
@@ -123,7 +123,7 @@ export default async function PipelinePage() {
                 <tr key={c.id}>
                   <Td>
                     <div className="num whitespace-nowrap">{dateTime(c.scheduledAt)}</div>
-                    <div className="num text-[11px] text-muted">{relative(c.scheduledAt, now)}</div>
+                    <div className="num text-[12px] text-muted">{relative(c.scheduledAt, now)}</div>
                   </Td>
                   <Td>
                     <Link href={`/creators/${c.creatorId}`} className="font-medium hover:underline">
@@ -135,7 +135,7 @@ export default async function PipelinePage() {
                   </Td>
                   <Td>
                     {c.link ? (
-                      <a href={c.link} target="_blank" rel="noreferrer" className="text-[12px] hover:underline">
+                      <a href={c.link} target="_blank" rel="noreferrer" className="text-[13px] hover:underline">
                         Join
                       </a>
                     ) : (
@@ -159,13 +159,13 @@ export default async function PipelinePage() {
             <section key={stage} className="flex min-w-0 flex-col rounded-lg border border-line bg-sunken/60">
               <header className="border-b border-line px-3 py-2">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-[13px] font-semibold capitalize">{stage}</h2>
-                  <span className="num text-[12px] text-muted">{cards.length}</span>
+                  <h2 className="text-[14px] font-semibold capitalize">{stage}</h2>
+                  <span className="num text-[13px] text-muted">{cards.length}</span>
                 </div>
-                <div className="text-[11px] text-muted">{HINT[stage]}</div>
+                <div className="text-[12px] text-muted">{HINT[stage]}</div>
               </header>
               {cards.length === 0 ? (
-                <p className="px-3 py-4 text-[12px] text-muted">{stage === "contacted" ? "Send openers from Outreach to fill this column." : "Nobody here."}</p>
+                <p className="px-3 py-4 text-[13px] text-muted">{stage === "contacted" ? "Send openers from Outreach to fill this column." : "Nobody here."}</p>
               ) : (
                 <ul className="space-y-2 p-2">
                   {cards.slice(0, PER_COLUMN).map((c) => {
@@ -182,7 +182,7 @@ export default async function PipelinePage() {
                           </Link>
                           {p && <PlatformTag platform={p.platform} />}
                         </div>
-                        <div className="mt-0.5 flex items-center justify-between text-[12px]">
+                        <div className="mt-0.5 flex items-center justify-between text-[13px]">
                           <span className="num text-ink-2">{s ? `${compact(s.medianViews)} median` : "not scored"}</span>
                           <span className={cx("num", stale ? "font-medium text-tally" : "text-muted")} title={stale ? `Over ${STALE[stage]} days in ${stage}` : undefined}>
                             {d}d in stage
@@ -214,7 +214,7 @@ export default async function PipelinePage() {
                     );
                   })}
                   {cards.length > PER_COLUMN && (
-                    <li className="px-1 text-[12px]">
+                    <li className="px-1 text-[13px]">
                       <Link href={`/creators?stage=${stage}`} className="text-ink-2 hover:text-ink">
                         +{cards.length - PER_COLUMN} more →
                       </Link>
@@ -231,7 +231,7 @@ export default async function PipelinePage() {
           <Empty
             title="Pipeline is empty"
             action={
-              <Link href="/outreach?tab=compose" className="text-[13px] underline">
+              <Link href="/outreach?tab=compose" className="text-[14px] underline">
                 Write openers
               </Link>
             }

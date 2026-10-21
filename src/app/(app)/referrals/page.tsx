@@ -60,7 +60,7 @@ export default async function ReferralsPage() {
       </Grid>
 
       <div className="space-y-4">
-        <Card title="Roster links" action={<span className="num text-[12px] text-muted">{roster.length} creators</span>} flush>
+        <Card title="Roster links" action={<span className="num text-[13px] text-muted">{roster.length} creators</span>} flush>
           {perCreator.length === 0 ? (
             <div className="p-4">
               <Empty title="No roster yet">Creators get a referral link once they&apos;re in trial or active.</Empty>
@@ -88,7 +88,7 @@ export default async function ReferralsPage() {
                     </div>
                   </Td>
                   <Td>
-                    <a href={`/join/${c.referralCode}`} target="_blank" rel="noreferrer" className="num select-all whitespace-nowrap text-[12px] text-ink-2 hover:text-ink hover:underline">
+                    <a href={`/join/${c.referralCode}`} target="_blank" rel="noreferrer" className="num select-all whitespace-nowrap text-[13px] text-ink-2 hover:text-ink hover:underline">
                       /join/{c.referralCode}
                     </a>
                   </Td>
@@ -113,7 +113,7 @@ export default async function ReferralsPage() {
           )}
         </Card>
 
-        <Card title="All referrals" action={<span className="num text-[12px] text-muted">{rows.length}</span>} flush>
+        <Card title="All referrals" action={<span className="num text-[13px] text-muted">{rows.length}</span>} flush>
           {rows.length === 0 ? (
             <div className="p-4">
               <Empty title="No referrals yet">Share a creator&apos;s link from the table above — sign-ups land in the pipeline as replied.</Empty>

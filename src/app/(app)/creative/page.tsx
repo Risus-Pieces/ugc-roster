@@ -110,7 +110,7 @@ export default async function HookBankPage({ searchParams }: { searchParams: Pro
               title={bank.length ? "Nothing matches these filters" : "The hook bank is empty"}
               action={
                 bank.length ? (
-                  <Link href="/creative" className="text-[13px] underline">
+                  <Link href="/creative" className="text-[14px] underline">
                     Clear filters
                   </Link>
                 ) : undefined
@@ -144,9 +144,9 @@ export default async function HookBankPage({ searchParams }: { searchParams: Pro
         </div>
 
         <div className="space-y-4">
-          <Card title="Formats" flush action={<span className="text-[11px] text-muted">by median views</span>}>
+          <Card title="Formats" flush action={<span className="text-[12px] text-muted">by median views</span>}>
             {formats.length === 0 ? (
-              <p className="px-4 py-3 text-[13px] text-muted">No formats tagged yet.</p>
+              <p className="px-4 py-3 text-[14px] text-muted">No formats tagged yet.</p>
             ) : (
               <Table head={["Format", { label: "Videos", align: "right" }, { label: "Median", align: "right" }]}>
                 {formats.map((x) => (
@@ -155,7 +155,7 @@ export default async function HookBankPage({ searchParams }: { searchParams: Pro
                       <Link href={href({ format: f.format === x.format ? undefined : x.format })} className="hover:underline">
                         {x.format}
                       </Link>
-                      {x.competitor > 0 && <span className="ml-1 text-[11px] text-muted">({x.competitor} comp.)</span>}
+                      {x.competitor > 0 && <span className="ml-1 text-[12px] text-muted">({x.competitor} comp.)</span>}
                     </Td>
                     <Td right mono>
                       {x.n}
@@ -170,7 +170,7 @@ export default async function HookBankPage({ searchParams }: { searchParams: Pro
           </Card>
 
           <Card title="Add competitor video">
-            <p className="mb-3 text-[13px] text-ink-2">Paste a competitor video that&apos;s working. It&apos;s tagged by hook and format and joins the bank, so briefs can borrow the structure — never the words.</p>
+            <p className="mb-3 text-[14px] text-ink-2">Paste a competitor video that&apos;s working. It&apos;s tagged by hook and format and joins the bank, so briefs can borrow the structure — never the words.</p>
             <CompetitorForm />
           </Card>
         </div>
@@ -188,7 +188,7 @@ function groupBy<T>(items: T[], key: (t: T) => string) {
 function FilterRow({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="flex flex-wrap items-center gap-1.5">
-      <span className="w-14 shrink-0 text-[11px] uppercase tracking-[0.08em] text-muted">{label}</span>
+      <span className="w-14 shrink-0 text-[12px] font-semibold text-muted">{label}</span>
       {children}
     </div>
   );
@@ -199,7 +199,7 @@ function Chip({ href, active, children }: { href: string; active: boolean; child
     <Link
       href={href}
       scroll={false}
-      className={cx("inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[12px]", active ? "border-ink bg-ink text-panel" : "border-line bg-panel text-ink-2 hover:border-line-strong hover:text-ink")}
+      className={cx("inline-flex items-center gap-1 rounded-md border px-2 py-0.5 text-[13px]", active ? "border-ink bg-ink text-panel" : "border-line bg-panel text-ink-2 hover:border-line-strong hover:text-ink")}
     >
       {children}
     </Link>

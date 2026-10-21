@@ -11,17 +11,18 @@
   --wood-light: #b07a42;
   --on-wood: #fff0c8;
   --on-wood-2: #e9cc9b;
-  --paper: #eac98e;
-  --panel: #f6e2b6;
-  --field: #fbefd2;
-  --sunken: #e5c287;
-  --line: #c99a5b;
+  --paper: #e6cf9f;
+  --panel: #f8ebcd;
+  --field: #fdf5e2;
+  --sunken: #efdbb2;
+  --line: #d9bc8a;
+  --frame: #b88c55;
   --line-strong: #6b4423;
-  --ink: #3b2414;
-  --ink-2: #6b4423;
-  --muted: #86602f;
+  --ink: #34200f;
+  --ink-2: #5a3a1e;
+  --muted: #6f4f2b;
   --gold: #f2be3b;
-  --tally: #a84a0c;
+  --tally: #94400a;
   --tally-soft: #f8d66d;
   --profit: #2e6b27;
   --profit-soft: #c5e3a0;
@@ -30,6 +31,8 @@
   --info: #2d5e8c;
   --info-soft: #bfddf0;
   --crop: #4e8a3a;
+  --action: #3a6e2e;
+  --on-action: #fff4d6;
 }
 
 /* Night on the farm */
@@ -42,15 +45,16 @@
     --wood-light: #6b4724;
     --on-wood: #f7e6c0;
     --on-wood-2: #cdb184;
-    --paper: #2b2115;
-    --panel: #3a2c1c;
-    --field: #46352a;
-    --sunken: #33271a;
-    --line: #5a4329;
-    --line-strong: #a07a48;
-    --ink: #f7e6c0;
-    --ink-2: #d9bf8e;
-    --muted: #a88a5f;
+    --paper: #271d13;
+    --panel: #3a2c1e;
+    --field: #4a3a2a;
+    --sunken: #2f2418;
+    --line: #554030;
+    --frame: #7a5d3a;
+    --line-strong: #b48d58;
+    --ink: #f8ead0;
+    --ink-2: #e4cb9d;
+    --muted: #c3a679;
     --gold: #f2be3b;
     --tally: #f5a54a;
     --tally-soft: #4a3010;
@@ -61,6 +65,8 @@
     --info: #8cc4f0;
     --info-soft: #1b3448;
     --crop: #5fa046;
+    --action: #356a2a;
+    --on-action: #fff4d6;
   }
 }
 
@@ -76,6 +82,7 @@
   --color-field: var(--field);
   --color-sunken: var(--sunken);
   --color-line: var(--line);
+  --color-frame: var(--frame);
   --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
   --color-ink-2: var(--ink-2);
@@ -90,9 +97,11 @@
   --color-info: var(--info);
   --color-info-soft: var(--info-soft);
   --color-crop: var(--crop);
+  --color-action: var(--action);
+  --color-on-action: var(--on-action);
   --font-sans: var(--font-body), ui-sans-serif, system-ui, sans-serif;
   --font-display: var(--font-display-face), var(--font-body), sans-serif;
-  --font-mono: var(--font-data), ui-monospace, monospace;
+  --font-mono: ui-monospace, SFMono-Regular, Menlo, monospace;
   /* Pixel world: no rounded corners (rounded-full stays for dots). */
   --radius-xs: 0;
   --radius-sm: 0;
@@ -103,7 +112,7 @@
 }
 
 html {
-  font-size: 14px;
+  font-size: 15px;
   background: var(--grass);
 }
 
@@ -112,27 +121,25 @@ body {
   background-size: 32px 32px;
   color: var(--ink);
   font-family: var(--font-sans);
+  line-height: 1.5;
 }
 
-/* Numbers in the pixel face. VT323 runs small, so it's scaled up relative to its context. */
+/* Figures line up in columns. The pixel face is kept for page titles and headline stats. */
 .num {
-  font-family: var(--font-mono);
   font-variant-numeric: tabular-nums;
-  font-size: 1.28em;
-  line-height: 1;
-  letter-spacing: 0.01em;
+  font-weight: 600;
 }
 
-/* Pixel frame: four offset shadows leave the corners empty, which reads as a stepped corner. */
+/* Pixel frame: four offset shadows leave the corners empty, which reads as a stepped corner.
+   Cards use the soft frame color so a page full of them stays calm; buttons and inputs keep the strong line. */
 .rounded-lg.border:not(.border-dashed),
 .px-frame {
   border-color: transparent;
   box-shadow:
-    0 -2px 0 0 var(--line-strong),
-    0 2px 0 0 var(--line-strong),
-    -2px 0 0 0 var(--line-strong),
-    2px 0 0 0 var(--line-strong),
-    0 6px 0 -2px rgb(59 36 20 / 0.28);
+    0 -2px 0 0 var(--frame),
+    0 2px 0 0 var(--frame),
+    -2px 0 0 0 var(--frame),
+    2px 0 0 0 var(--frame);
 }
 
 /* The parchment board inside a wooden frame — every page sits on one. */

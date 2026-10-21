@@ -27,7 +27,7 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
 
   return (
     <>
-      <div className="mb-2 text-[12px]">
+      <div className="mb-2 text-[13px]">
         <Link href="/onboarding" className="text-ink-2 hover:text-ink">
           ← Onboarding
         </Link>
@@ -37,8 +37,8 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
         description={
           <span className="flex flex-wrap items-center gap-2">
             <Badge tone={TONE[k.status]}>{k.status}</Badge>
-            <span className="text-[13px]">Written {dateTime(k.createdAt)}</span>
-            {k.sentAt && <span className="text-[13px]">· sent {dateTime(k.sentAt)}</span>}
+            <span className="text-[14px]">Written {dateTime(k.createdAt)}</span>
+            {k.sentAt && <span className="text-[14px]">· sent {dateTime(k.sentAt)}</span>}
           </span>
         }
         actions={
@@ -58,7 +58,7 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
 
       <div className="grid gap-4 lg:grid-cols-[1fr_340px]">
         <Card className="min-w-0">
-          <article className="max-w-[68ch] text-[14px]">
+          <article className="max-w-[68ch] text-[15px]">
             <Markdown source={k.body} />
           </article>
         </Card>
@@ -66,7 +66,7 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
         <div className="space-y-4">
           <Card title="Signature">
             {k.status === "signed" ? (
-              <dl className="space-y-2 text-[13px]">
+              <dl className="space-y-2 text-[14px]">
                 <Row k="Signed by">
                   <span className="font-medium">{k.signatureName}</span>
                 </Row>
@@ -77,17 +77,17 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
                   <span className="num">{k.signatureIp ?? "—"}</span>
                 </Row>
                 <Row k="User agent">
-                  <span className="break-all text-[12px] text-ink-2">{k.signatureUserAgent ?? "—"}</span>
+                  <span className="break-all text-[13px] text-ink-2">{k.signatureUserAgent ?? "—"}</span>
                 </Row>
                 <Row k="Consent">I agree to sign electronically (checked)</Row>
               </dl>
             ) : (
-              <p className="text-[13px] text-ink-2">{k.status === "void" ? "This version was replaced and can't be signed." : "Not signed yet. The creator signs from their portal by typing their full legal name and agreeing to sign electronically."}</p>
+              <p className="text-[14px] text-ink-2">{k.status === "void" ? "This version was replaced and can't be signed." : "Not signed yet. The creator signs from their portal by typing their full legal name and agreeing to sign electronically."}</p>
             )}
           </Card>
 
           <Card title={k.status === "signed" ? "SHA-256 of the signed text" : "SHA-256 of this text"}>
-            <p className="num break-all text-[12px]">{k.bodySha256}</p>
+            <p className="num break-all text-[13px]">{k.bodySha256}</p>
             <div className="mt-2">
               {intact ? <Notice tone="profit">The text above still matches this hash — it hasn&apos;t changed since it was written.</Notice> : <Notice tone="loss">The text no longer matches the stored hash. Don&apos;t rely on this copy; generate a new contract.</Notice>}
             </div>
@@ -95,11 +95,11 @@ export default async function ContractPage({ params }: { params: Promise<{ id: s
 
           <Card title="Key terms">
             <TermsSummary t={k.terms} />
-            <p className="mt-3 text-[12px] text-muted">{k.terms.disclosure}</p>
+            <p className="mt-3 text-[13px] text-muted">{k.terms.disclosure}</p>
           </Card>
 
           {creator && (
-            <Link href={`/creators/${creator.id}`} className={cx("block text-[12px] text-ink-2 hover:text-ink", btnSm)}>
+            <Link href={`/creators/${creator.id}`} className={cx("block text-[13px] text-ink-2 hover:text-ink", btnSm)}>
               Creator profile →
             </Link>
           )}
