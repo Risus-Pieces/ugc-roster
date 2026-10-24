@@ -8,6 +8,8 @@ import { ActionForm, SubmitButton } from "@/components/client";
 import { creatorEconomics } from "@/lib/services/decisions";
 import { rateCardFor, snapshotsByPost } from "@/lib/services/common";
 import { warmupStatus } from "@/lib/engines/onboarding";
+import { creatorLink } from "@/lib/engines/signups";
+import { getBrand } from "@/lib/settings";
 import { compact, dateTime, day, pct, relative, usd, usd2 } from "@/lib/format";
 import { draftOpenerAction, moveStageAction } from "../actions";
 import { ClassBadge, MsgStatusBadge, requestTime, viralDependence } from "../bits";
@@ -28,6 +30,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
   if (!creator) notFound();
 
   const onRoster = creator.stage === "trial" || creator.stage === "active";
+  const brand = await getBrand();
   const [accounts, scoreRows, recentPosts, campaignPosts, thread, contractRows, taxRows, campRows, callRows, referralsMade, referrer, card, econAll] = await Promise.all([
     db.select().from(creatorAccounts).where(eq(creatorAccounts.creatorId, id)).orderBy(desc(creatorAccounts.followers)),
     db.select().from(creatorScores).where(eq(creatorScores.creatorId, id)).orderBy(desc(creatorScores.computedAt)),
@@ -337,7 +340,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
           <Card title="Codes and links">
             <dl className="space-y-2.5 text-[14px]">
               <Row label="Promo code">{creator.promoCode ? <span className="num font-medium">{creator.promoCode}</span> : <span className="text-muted">assigned at trial</span>}</Row>
-              <LinkRow label="Tracking link" path={creator.promoCode ? `/r/${creator.promoCode}` : null} hint="Put in bio — every click is counted" plain />
+              <LinkRow label="Creator link" path={creator.promoCode ? creatorLink(brand.appUrl, creator.promoCode) : null} hint="Goes in their bio. Waitlist signups through it count toward their signup bonus." />
               <LinkRow label="Referral link" path={`/join/${creator.referralCode}`} hint="For recruiting friends" />
               <LinkRow label="Creator portal" path={`/c/${creator.portalToken}`} hint="Their contract, tax form, briefs and pay" />
             </dl>

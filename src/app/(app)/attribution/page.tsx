@@ -11,8 +11,9 @@ import { compact, usd, usd2, pct, dateTime, isoDate, requestTime } from "@/lib/f
 import { InstallChart, type ChartBucket, type ChartTick } from "./install-chart";
 import { publicOrigin } from "../settings/origin";
 import { ActionForm, SubmitButton } from "@/components/client";
-import { signupTotals } from "@/lib/services/signups";
-import { importSignupsAction } from "./actions";
+import { signupTotals, waitlistSyncConfigured } from "@/lib/services/signups";
+import { creatorLink } from "@/lib/engines/signups";
+import { importSignupsAction, syncWaitlistAction } from "./actions";
 
 export const metadata = { title: "Attribution" };
 
@@ -227,7 +228,7 @@ async function Overview({ report }: { report: AttributionReport }) {
       <Card title="How the estimate works">
         <div className="grid gap-4 text-[14px] text-ink-2 md:grid-cols-2 lg:grid-cols-4">
           <Method n="1" title="Link + promo code (direct)">
-            Each creator gets their own promo code and a tracking link (<span className="num">/r/CODE</span>). Every install or redemption through them is counted. This is a floor: most viewers just search the App Store and never use either.
+            Each creator gets their own promo code and a link to your site (<span className="num">/go/code</span>). Every install or redemption through them is counted. This is a floor: most viewers just search the App Store and never use either.
           </Method>
           <Method n="2" title="“Where did you hear about us?”">
             An in-app survey lists creator names next to generic options. A creator&apos;s share of answers is applied to all installs in the period. Used once there are 30+ responses.
@@ -342,6 +343,7 @@ function BreakdownList({ items, max, share, tone }: { items: { key: string; labe
 
 async function Signups() {
   const [rows, origin, brand] = await Promise.all([signupTotals(), publicOrigin(), getBrand()]);
+  const synced = waitlistSyncConfigured();
   const total = rows.reduce((a, r) => a + r.signups, 0);
   return (
     <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
@@ -370,9 +372,17 @@ async function Signups() {
         )}
       </Card>
       <div className="space-y-4">
+        {synced && (
+          <Card title="Waitlist database">
+            <p className="mb-3 text-[14px] text-ink-2">Connected. New signups come in every morning; flagged ones are removed.</p>
+            <ActionForm action={syncWaitlistAction}>
+              <SubmitButton pendingText="Syncing…">Sync now</SubmitButton>
+            </ActionForm>
+          </Card>
+        )}
         <Card title="Import waitlist signups">
           <ActionForm action={importSignupsAction} className="space-y-3" resetOnSuccess>
-            <Field label="Waitlist export (CSV)" hint="Needs an email column, the ref code column and a signup date. Each person counts once, so importing the same file twice is safe.">
+            <Field label="Waitlist export (CSV)" hint="Export the waitlist table from Supabase as CSV. It needs email, influencer_handle and created_at; flagged signups are skipped. Each person counts once, so importing the same file twice is safe.">
               <input type="file" name="file" accept=".csv,text/csv" className={input} />
             </Field>
             <Field label="…or paste rows">
@@ -384,7 +394,7 @@ async function Signups() {
           </ActionForm>
         </Card>
         <Notice tone="info">
-          Creator links send people to <span className="num">{brand.appUrl}/?ref=CODE</span>. Your waitlist form has to save that ref (most form tools can capture it from the page URL into a hidden field), or signups can&apos;t be matched to a creator. To send signups automatically instead of importing, POST them to <span className="num">{origin}/api/signups</span> with the signups secret.
+          Creator links are <span className="num">{brand.appUrl.replace(/\/+$/, "")}/go/code</span>. Your site saves the code with the signup as <span className="num">influencer_handle</span>, which is how Roster knows whose link it was. Other tools can POST signups to <span className="num">{origin}/api/signups</span> with the signups secret.
         </Notice>
       </div>
     </div>
@@ -392,13 +402,13 @@ async function Signups() {
 }
 
 async function Codes() {
-  const [rows, origin] = await Promise.all([codeStats(WINDOW_DAYS), publicOrigin()]);
+  const [rows, brand] = await Promise.all([codeStats(WINDOW_DAYS), getBrand()]);
   const tot = rows.reduce((a, r) => ({ clicks: a.clicks + r.clicks, installs: a.installs + r.installs, redemptions: a.redemptions + r.redemptions }), { clicks: 0, installs: 0, redemptions: 0 });
 
   return (
     <div className="space-y-4">
       <Notice tone="info">
-        Codes go in captions and on screen; the link goes in bio. A click on <span className="num">{origin}/r/CODE</span> is logged and forwarded to your app link with <span className="num">?ref=CODE</span>. Pass the code to RevenueCat as the <span className="num">creator_code</span> attribute and purchases are matched automatically.
+        Codes go in captions and on screen; the link goes in bio. A creator&apos;s link is <span className="num">{brand.appUrl.replace(/\/+$/, "")}/go/code</span>: your site remembers the creator for 30 days and tags their waitlist signups. Clicks show here only for Roster&apos;s own <span className="num">/r/CODE</span> links, which forward to the same place.
       </Notice>
       <Card title={`Codes & links · last ${WINDOW_DAYS} days`} action={<span className="num text-[13px] text-muted">{compact(tot.clicks)} clicks · {compact(tot.installs)} link installs · {compact(tot.redemptions)} redemptions</span>} flush>
         {rows.length === 0 ? (
@@ -434,8 +444,8 @@ async function Codes() {
                 </Td>
                 <Td>
                   {r.promoCode ? (
-                    <a href={`/r/${r.promoCode}`} target="_blank" rel="noopener noreferrer" className="num select-all whitespace-nowrap text-[13px] text-ink-2 hover:text-ink">
-                      {origin}/r/{r.promoCode}
+                    <a href={creatorLink(brand.appUrl, r.promoCode)} target="_blank" rel="noopener noreferrer" className="num select-all whitespace-nowrap text-[13px] text-ink-2 hover:text-ink">
+                      {creatorLink(brand.appUrl, r.promoCode)}
                     </a>
                   ) : (
                     <span className="text-muted">—</span>

@@ -4,7 +4,7 @@ import { assessAuthenticity, commentQuality } from "./authenticity";
 import { extractEmails, emailsFromPage, creatorEmailsFromPage, normalizeEmail, isReservedAddress } from "./contact";
 import { emailLooksLike, looksLikeSamePerson, parseTikTokProfile, worthOpening } from "./public-profile";
 import { offerLine, offerTerms } from "./offer";
-import { cleanRef, parseSignupCsv, parseSignupDate } from "./signups";
+import { cleanRef, creatorLink, parseSignupCsv, parseSignupDate } from "./signups";
 import { rankLookalikes } from "./lookalike";
 import { classifyReply } from "./reply-classifier";
 import { runComplianceChecks, claimedExperienceDays, overallStatus } from "./compliance";
@@ -541,6 +541,25 @@ describe("waitlist signups", () => {
   });
   it("says which columns are missing", () => {
     expect(parseSignupCsv("name,email\nSam,sam@x.co").missing).toEqual(["ref", "signup date"]);
+  });
+  it("reads the Sooz waitlist table export, ignoring the friend-referral columns", () => {
+    const csv = [
+      "id,email,card_index,created_at,ref_slug,ref_name,referred_by_slug,discount_code,referral_count,influencer_handle,signup_status",
+      "1,a@x.co,2,2026-10-21 15:04:00+00,QK7P2M,Ann,XY12AB,SOOZ50,0,samheat4x7,valid",
+      "2,b@x.co,1,2026-10-21 16:00:00+00,ZZ9P2M,Bo,,SOOZ50,0,samheat4x7,flagged",
+      "3,c@x.co,1,2026-10-21 17:00:00+00,AB3P2M,Cy,QK7P2M,SOOZ50,0,,valid",
+    ].join("\n");
+    const { rows, missing } = parseSignupCsv(csv);
+    expect(missing).toEqual([]);
+    expect(rows.map((r) => [r.ref, r.flagged])).toEqual([
+      ["SAMHEAT4X7", false],
+      ["SAMHEAT4X7", true],
+      [null, false],
+    ]);
+  });
+  it("builds the site's creator link, never ?ref= (that's the friend program)", () => {
+    expect(creatorLink("https://drinksooz.com", "SAMHEAT4X7")).toBe("https://drinksooz.com/go/samheat4x7");
+    expect(creatorLink("https://drinksooz.com/shop?x=1", "AB3")).toBe("https://drinksooz.com/go/ab3");
   });
   it("cleans refs and dates", () => {
     expect(cleanRef("https://drinksooz.com/?ref=sam-heat&utm_source=creator")).toBe("SAM-HEAT");

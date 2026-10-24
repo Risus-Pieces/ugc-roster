@@ -1,13 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { creatorByPromoCode, recordLinkEvent } from "@/lib/integrations/revenue";
 import { getBrand } from "@/lib/settings";
+import { creatorLink } from "@/lib/engines/signups";
 
 // Link unfurlers and crawlers shouldn't count as clicks.
 const BOT = /bot|crawl|spider|slurp|preview|facebookexternalhit|embedly|whatsapp|telegram|discord|skype|curl\/|wget|python-requests|headless/i;
 
 /**
- * Tracking link /r/<PROMOCODE>: log a click for the creator and redirect to the app URL with
- * ?ref=<CODE> and UTM tags. Unknown codes still redirect to the app, untagged.
+ * Tracking link /r/<PROMOCODE>: log a click for the creator and forward to their site link
+ * (<app URL>/go/<code>), which tags the waitlist signup. Never ?ref=: on the Sooz site that's the
+ * friend-referral program. Unknown codes go to the app URL, untagged.
  */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ code: string }> }) {
   return handle(req, ctx, true);
@@ -30,11 +32,7 @@ async function handle(req: NextRequest, ctx: { params: Promise<{ code: string }>
   const clean = code.trim().toUpperCase().replace(/[^A-Z0-9_-]/g, "").slice(0, 40);
   const creator = clean ? await creatorByPromoCode(clean) : undefined;
   if (creator?.promoCode) {
-    const ref = creator.promoCode.toUpperCase();
-    dest.searchParams.set("ref", ref);
-    dest.searchParams.set("utm_source", "creator");
-    dest.searchParams.set("utm_medium", "ugc");
-    dest.searchParams.set("utm_campaign", ref);
+    dest = new URL(creatorLink(dest.toString(), creator.promoCode));
     if (count && !BOT.test(req.headers.get("user-agent") ?? "")) {
       try {
         await recordLinkEvent(creator.id, "link_click");

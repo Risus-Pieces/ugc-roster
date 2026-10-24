@@ -1,12 +1,14 @@
 import "server-only";
 import { createHash } from "node:crypto";
+import { Pool } from "pg";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, attributionEvents, creators } from "@/db";
 import { normalizeEmail } from "@/lib/engines/contact";
 import { cleanRef, parseSignupCsv, type SignupRow } from "@/lib/engines/signups";
+import { SUPABASE_ROOT_CA } from "@/lib/integrations/supabase-ca";
 import { log } from "./common";
 
-export type SignupResult = { added: number; duplicate: number; unknownRef: number; noRef: number; invalid: number; self: number; unknownRefs: string[] };
+export type SignupResult = { added: number; duplicate: number; unknownRef: number; noRef: number; invalid: number; self: number; flagged: number; removed: number; unknownRefs: string[] };
 
 /** Signups are stored as a hash of the normalized email: enough to count each person once, without keeping the address. */
 const hashEmail = (email: string) => createHash("sha256").update(`signup:${normalizeEmail(email)}`).digest("hex");
@@ -17,8 +19,16 @@ const hashEmail = (email: string) => createHash("sha256").update(`signup:${norma
  * Pay is worked out later: signups inside a video's view window earn the signup bonus.
  */
 export async function recordSignups(rows: Omit<SignupRow, "line">[], now = new Date()): Promise<SignupResult> {
-  const r: SignupResult = { added: 0, duplicate: 0, unknownRef: 0, noRef: 0, invalid: 0, self: 0, unknownRefs: [] };
+  const r: SignupResult = { added: 0, duplicate: 0, unknownRef: 0, noRef: 0, invalid: 0, self: 0, flagged: 0, removed: 0, unknownRefs: [] };
+  // Flagged on the waitlist side: never counted, and taken back out if an earlier sync counted it.
+  const flagged = rows.filter((row) => row.flagged && row.email && normalizeEmail(row.email)).map((row) => hashEmail(row.email!));
+  r.flagged = flagged.length;
+  for (let i = 0; i < flagged.length; i += 500) {
+    const gone = await db.delete(attributionEvents).where(and(eq(attributionEvents.kind, "signup"), inArray(attributionEvents.appUserId, flagged.slice(i, i + 500)))).returning({ id: attributionEvents.id });
+    r.removed += gone.length;
+  }
   const valid = rows.filter((row) => {
+    if (row.flagged) return false;
     if (!row.email || !normalizeEmail(row.email)) return r.invalid++, false;
     if (!row.ref) return r.noRef++, false;
     return true;
@@ -67,6 +77,31 @@ export async function importSignupCsv(csv: string) {
   const undated = rows.filter((row) => !row.at).length;
   if (undated) throw new Error(`${undated} row${undated > 1 ? "s have" : " has"} no readable signup date, so they can't be matched to a video's window. Fix those dates and import again.`);
   return recordSignups(rows);
+}
+
+/** Is the Sooz waitlist database connected (read-only login in WAITLIST_DATABASE_URL)? */
+export const waitlistSyncConfigured = () => Boolean(process.env.WAITLIST_DATABASE_URL);
+
+/**
+ * Pull signups that came through creator links straight from the Sooz waitlist (Supabase). Reads only
+ * email, influencer_handle, created_at and signup_status. Safe to run any time: each person counts once,
+ * and a signup flagged since the last run is removed.
+ */
+export async function syncWaitlist() {
+  const url = process.env.WAITLIST_DATABASE_URL;
+  if (!url) throw new Error("Connect the waitlist database first (WAITLIST_DATABASE_URL).");
+  // Verify the server against Supabase's CA; an sslmode in the URL would override this, so drop it.
+  const connectionString = url.replace(/([?&])sslmode=[^&]*&?/, "$1").replace(/[?&]$/, "");
+  const pool = new Pool({ connectionString, ssl: { ca: SUPABASE_ROOT_CA, rejectUnauthorized: true }, max: 1, connectionTimeoutMillis: 15_000 });
+  try {
+    const { rows } = await pool.query<{ email: string; influencer_handle: string; created_at: Date; signup_status: string }>(
+      "select email, influencer_handle, created_at, signup_status from public.waitlist where influencer_handle is not null",
+    );
+    const r = await recordSignups(rows.map((w) => ({ email: w.email, ref: cleanRef(w.influencer_handle), at: w.created_at, flagged: w.signup_status !== "valid" })));
+    return { scanned: rows.length, ...r };
+  } finally {
+    await pool.end();
+  }
 }
 
 /** One signup from the waitlist form or an automation (Zapier, Make). */

@@ -74,7 +74,7 @@ async function BrandForm() {
               <input name="valueProp" defaultValue={b.valueProp} className={input} required />
             </Field>
           </div>
-          <Field label="App URL" hint="Tracking links (/r/CODE) redirect here with ?ref=CODE.">
+          <Field label="App URL" hint="Your site. Creator links are this address plus /go/<their code>.">
             <input name="appUrl" type="url" defaultValue={b.appUrl} className={input} required />
           </Field>
           <Field label="Booking link" hint="Your Calendly link, offered to creators who reply.">

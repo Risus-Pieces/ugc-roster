@@ -9,6 +9,7 @@ import { rateCardFor } from "@/lib/services/common";
 import { connectedProviders } from "@/lib/integrations/platforms";
 import { taxFormFor, warmupStatus } from "@/lib/engines/onboarding";
 import { offerTerms } from "@/lib/engines/offer";
+import { creatorLink } from "@/lib/engines/signups";
 import { getBrand } from "@/lib/settings";
 import { compact, day, isoDate, relative, usd, usd2 } from "@/lib/format";
 import { Markdown } from "@/app/(app)/onboarding/markdown";
@@ -400,8 +401,8 @@ export default async function CreatorPortal({ params, searchParams }: { params: 
               Put this link in your bio{card.signupBonusCents > 0 ? " so waitlist signups count for you" : ""}. Your code is <span className="num font-medium text-ink">{creator.promoCode}</span>.
             </p>
             <div className="mt-2 flex items-center gap-2 rounded-lg bg-sunken p-2 pl-3">
-              <span className="num min-w-0 flex-1 truncate text-[14px]">{`${origin}/r/${creator.promoCode}`}</span>
-              <CopyButton value={`${origin}/r/${creator.promoCode}`} small={false} className="!py-2" />
+              <span className="num min-w-0 flex-1 truncate text-[14px]">{creatorLink(brand.appUrl, creator.promoCode)}</span>
+              <CopyButton value={creatorLink(brand.appUrl, creator.promoCode)} small={false} className="!py-2" />
             </div>
           </>
         )}
