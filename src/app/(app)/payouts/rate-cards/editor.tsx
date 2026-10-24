@@ -200,7 +200,7 @@ export function RateCardEditor({ card }: { card: CardInput }) {
 
         <Card title="Perks">
           <Field label="Perks, one per line" hint="Non-cash extras. They're mentioned in outreach emails and shown in the contract and the creator portal.">
-            <textarea name="perks" value={f.perks} onChange={set("perks")} rows={3} className={input} placeholder={"First samples from the first production run\nA Hot Mess Club card"} />
+            <textarea name="perks" value={f.perks} onChange={set("perks")} rows={3} className={input} placeholder={"First samples from the first production run"} />
           </Field>
         </Card>
 
