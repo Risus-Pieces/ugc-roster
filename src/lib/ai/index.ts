@@ -51,8 +51,6 @@ async function withFallback<T>(ai: () => Promise<T>, fallback: () => T): Promise
   }
 }
 
-const usd = (c: number) => `$${(c / 100).toFixed(c % 100 ? 2 : 0)}`;
-
 // ─── Outreach opener ────────────────────────────────────────────────────────
 
 export async function writeOpener(p: {
@@ -61,28 +59,32 @@ export async function writeOpener(p: {
   handle: string;
   platform: string;
   recentCaptions: string[];
-  baseCents: number;
-  cpmCents: number;
+  bio?: string | null;
+  /** One sentence of pay, from offerLine(). */
+  offer: string;
+  perks: string[];
 }) {
   const first = p.creatorName.split(" ")[0];
   return withFallback(
     () =>
       structured({
         system: `You write cold outreach emails from ${p.brand.senderName} at ${p.brand.name} to small UGC creators (2K–20K followers).
-Rules: under 90 words. Open with one specific, genuine observation about a recent video (from the captions given) — never generic flattery. State pay up front in the second sentence (base per video plus per-view pay). One line on the product. End with a low-friction question. No emojis, no exclamation marks in the subject, no "I hope this finds you well". Plain text, sign off with the sender's first name.`,
+Rules: under 100 words. Open with one specific, genuine observation about their content, from the captions or bio given. If you have neither, open with what kind of creator they are on ${p.platform} and never invent a specific video. No generic flattery. State the pay up front in the second sentence, using the offer exactly as given: don't add, round or change amounts. If there are perks, mention them in a few words. One line on the product. End with a low-friction question. No emojis, no exclamation marks in the subject, no "I hope this finds you well". Plain text, sign off with the sender's first name.`,
         prompt: `Product: ${p.brand.product} — ${p.brand.valueProp}
 Creator: ${p.creatorName} (@${p.handle} on ${p.platform})
-Recent video captions:\n${p.recentCaptions.slice(0, 5).map((c) => `- ${c}`).join("\n")}
-Offer: ${usd(p.baseCents)} per video + ${usd(p.cpmCents)} per 1,000 views.`,
+Bio: ${p.bio?.trim() || "(none)"}
+Recent video captions:\n${p.recentCaptions.length ? p.recentCaptions.slice(0, 5).map((c) => `- ${c}`).join("\n") : "(none)"}
+Offer: ${p.offer}
+Perks: ${p.perks.length ? p.perks.join("; ") : "(none)"}`,
         schema: z.object({ subject: z.string(), body: z.string() }),
       }),
     () => ({
       subject: `Paid video collab with ${p.brand.name}`,
       body: `Hi ${first},
 
-Saw your recent video${p.recentCaptions[0] ? ` ("${p.recentCaptions[0].slice(0, 60)}")` : ""} — it's exactly the style that works for us.
+${p.recentCaptions[0] ? `Saw your recent video ("${p.recentCaptions[0].slice(0, 60)}") and it's exactly the style that works for us.` : `Your ${p.platform} content is exactly the style that works for us.`}
 
-We pay ${usd(p.baseCents)} per video plus ${usd(p.cpmCents)} per 1,000 views. ${p.brand.name} is ${p.brand.valueProp}.
+We pay ${p.offer}.${p.perks.length ? ` Founding creators also get ${p.perks.join(" and ").replace(/^./, (c) => c.toLowerCase())}.` : ""} ${p.brand.name} is ${p.brand.valueProp}.
 
 Want me to send over a sample brief?
 
@@ -93,7 +95,7 @@ ${p.brand.senderName.split(" ")[0]}`,
 
 // ─── Follow-ups ─────────────────────────────────────────────────────────────
 
-export async function writeFollowUp(p: { brand: Brand; creatorName: string; step: number; originalBody: string; baseCents: number; cpmCents: number }) {
+export async function writeFollowUp(p: { brand: Brand; creatorName: string; step: number; originalBody: string; offer: string }) {
   const first = p.creatorName.split(" ")[0];
   const sig = p.brand.senderName.split(" ")[0];
   return withFallback(
@@ -101,13 +103,13 @@ export async function writeFollowUp(p: { brand: Brand; creatorName: string; step
       structured({
         system: `You write short follow-ups to unanswered creator outreach from ${p.brand.senderName} at ${p.brand.name}.
 Rules: under 50 words, plain text, no subject line. Don't repeat the first email or guilt-trip ("just bumping this", "did you see my email"). Add one new, concrete reason to reply — follow-up 1: how simple the first video is (they film one short video from a brief, we review it, they post); follow-up 2: a polite last note that makes it easy to say no. Restate pay in one short clause. End with a yes/no question. Sign with "${sig}".`,
-        prompt: `Creator: ${p.creatorName}\nFollow-up number: ${p.step}\nPay: ${usd(p.baseCents)} per video + ${usd(p.cpmCents)} per 1,000 views\nFirst email:\n"""${p.originalBody}"""`,
+        prompt: `Creator: ${p.creatorName}\nFollow-up number: ${p.step}\nPay (use exactly): ${p.offer}\nFirst email:\n"""${p.originalBody}"""`,
         schema: z.object({ body: z.string() }),
       }),
     () => ({
       body:
         p.step === 1
-          ? `Hi ${first}, quick follow-up on this. It's one short video from a brief: you film it, we give a quick review, you post. ${usd(p.baseCents)} per video plus ${usd(p.cpmCents)} per 1,000 views. Want me to send a sample brief?\n\n${sig}`
+          ? `Hi ${first}, quick follow-up on this. It's one short video from a brief: you film it, we give a quick review, you post. ${p.offer.replace(/^./, (c) => c.toUpperCase())}. Want me to send a sample brief?\n\n${sig}`
           : `Hi ${first}, last note from me. If paid videos for ${p.brand.name} aren't a fit right now, no worries at all. If they are, reply "yes" and I'll send the brief.\n\n${sig}`,
     }),
   );
@@ -115,13 +117,13 @@ Rules: under 50 words, plain text, no subject line. Don't repeat the first email
 
 // ─── Reply triage ───────────────────────────────────────────────────────────
 
-export async function triageReply(p: { brand: Brand; creatorName: string; reply: string; baseCents: number; cpmCents: number }) {
+export async function triageReply(p: { brand: Brand; creatorName: string; reply: string; /** The full deal, from offerTerms(). */ terms: string[] }) {
   const first = p.creatorName.split(" ")[0];
   const template = (label: ReplyClass) => {
     const sig = p.brand.senderName.split(" ")[0];
     const drafts: Record<ReplyClass, string> = {
       interested: `Great to hear, ${first}. Easiest next step is a quick 15-minute call so I can walk you through the brief and how payouts work: ${p.brand.bookingUrl}\n\n${sig}`,
-      rates: `Thanks ${first}. Our standard rate is ${usd(p.baseCents)} per approved video plus ${usd(p.cpmCents)} per 1,000 views (first 14 days), with bonuses at view milestones. Creators who perform move up to higher tiers. Happy to talk it through: ${p.brand.bookingUrl}\n\n${sig}`,
+      rates: `Thanks ${first}. Here's how pay works:\n${p.terms.map((t) => `- ${t}`).join("\n")}\n\nHappy to talk it through: ${p.brand.bookingUrl}\n\n${sig}`,
       not_interested: `No problem at all, ${first} — thanks for getting back to me. Best of luck with your content.\n\n${sig}`,
       other: `Thanks for the reply, ${first}. Happy to answer any questions — or grab a time here if a quick call is easier: ${p.brand.bookingUrl}\n\n${sig}`,
     };
@@ -132,7 +134,7 @@ export async function triageReply(p: { brand: Brand; creatorName: string; reply:
       structured({
         system: `You triage replies to creator outreach for ${p.brand.name} and draft the response from ${p.brand.senderName}.
 Labels: interested (wants to proceed), rates (asking about pay or negotiating), not_interested (declines), other.
-Draft rules: under 80 words, warm and direct. For interested or rates, include the booking link ${p.brand.bookingUrl} to book a call. Our rate: ${usd(p.baseCents)}/video + ${usd(p.cpmCents)} per 1K views; never promise more. For not_interested, a gracious one-liner, no link. Sign with the sender's first name.`,
+Draft rules: under 80 words (up to 130 when explaining pay), warm and direct. For interested or rates, include the booking link ${p.brand.bookingUrl} to book a call. Our offer, which you must never exceed or change:\n${p.terms.map((t) => `- ${t}`).join("\n")}\nFor not_interested, a gracious one-liner, no link. Sign with the sender's first name.`,
         prompt: `Creator: ${p.creatorName}\nTheir reply:\n"""${p.reply}"""`,
         schema: z.object({ label: z.enum(["interested", "rates", "not_interested", "other"]), draft: z.string() }),
       }),

@@ -7,7 +7,7 @@ export const SESSION_COOKIE = "roster_admin";
 export const SESSION_MAX_AGE = 60 * 60 * 24 * 30;
 
 /** Paths that must stay reachable without signing in (creators, webhooks, crons, tracking links). */
-export const PUBLIC_PREFIXES = ["/login", "/c/", "/join/", "/r/", "/api/survey", "/api/webhooks/", "/api/cron/", "/api/oauth/"];
+export const PUBLIC_PREFIXES = ["/login", "/c/", "/join/", "/r/", "/api/survey", "/api/signups", "/api/webhooks/", "/api/cron/", "/api/oauth/"];
 
 export const isPublicPath = (path: string) => PUBLIC_PREFIXES.some((p) => path === p.replace(/\/$/, "") || path.startsWith(p));
 

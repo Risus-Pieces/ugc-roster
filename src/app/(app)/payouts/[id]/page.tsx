@@ -17,11 +17,12 @@ const KIND: Record<LineItem["kind"], string> = {
   base: "Base",
   cpm: "Per-view",
   milestone: "Milestone",
+  signup: "Signup bonus",
   referral: "Referral",
   clawback: "Clawback",
   cap_adjustment: "Cap adjustment",
 };
-const KIND_ORDER: LineItem["kind"][] = ["base", "cpm", "milestone", "referral", "clawback", "cap_adjustment"];
+const KIND_ORDER: LineItem["kind"][] = ["base", "cpm", "milestone", "signup", "referral", "clawback", "cap_adjustment"];
 const STATUS_TONE: Record<string, Tone> = { draft: "tally", approved: "info", paid: "profit", failed: "loss" };
 
 /** Own Suspense boundary: same-route navigations (tabs, filters) re-render below the (app) loading boundary. */

@@ -6,6 +6,7 @@ import { sendEmail, emailLive } from "@/lib/integrations/email";
 import { normalizeEmail } from "@/lib/engines/contact";
 import { getBrand, getOps } from "@/lib/settings";
 import { complianceFooter, doNotContact, followUpStatus, withFooter } from "@/lib/engines/outreach";
+import { offerLine, offerTerms, perksOf } from "@/lib/engines/offer";
 import { rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
 
@@ -13,11 +14,12 @@ export async function draftOpener(creatorId: string, campaignId?: string | null)
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, creatorId) });
   if (!creator) throw new Error("Creator not found");
   if (!creator.email) throw new Error(`${creator.name} has no contact email`);
-  const [brand, card, account] = await Promise.all([
+  const [brand, card, accounts] = await Promise.all([
     getBrand(),
     rateCardFor(creator.rateCardId),
-    db.query.creatorAccounts.findFirst({ where: eq(creatorAccounts.creatorId, creatorId), orderBy: desc(creatorAccounts.followers) }),
+    db.query.creatorAccounts.findMany({ where: eq(creatorAccounts.creatorId, creatorId), orderBy: desc(creatorAccounts.followers) }),
   ]);
+  const account = accounts[0];
   const recent = await db.select({ caption: posts.caption }).from(posts).where(eq(posts.creatorId, creatorId)).orderBy(desc(posts.postedAt)).limit(5);
   const opener = await writeOpener({
     brand,
@@ -25,8 +27,9 @@ export async function draftOpener(creatorId: string, campaignId?: string | null)
     handle: account?.handle ?? "",
     platform: account?.platform ?? "TikTok",
     recentCaptions: recent.map((r) => (r.caption ?? "").replace(/#\w+/g, "").trim()).filter(Boolean),
-    baseCents: card.baseCents,
-    cpmCents: card.cpmCents,
+    bio: accounts.find((a) => a.bio?.trim())?.bio, // Instagram bios aren't saved; a linked TikTok's often is
+    offer: offerLine(card),
+    perks: perksOf(card),
   });
   const [m] = await db
     .insert(messages)
@@ -86,7 +89,7 @@ export async function recordReply(creatorId: string, text: string, subject?: str
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, creatorId) });
   if (!creator) throw new Error("Creator not found");
   const [brand, card] = await Promise.all([getBrand(), rateCardFor(creator.rateCardId)]);
-  const t = await triageReply({ brand, creatorName: creator.name, reply: text, baseCents: card.baseCents, cpmCents: card.cpmCents });
+  const t = await triageReply({ brand, creatorName: creator.name, reply: text, terms: offerTerms(card) });
   const [m] = await db
     .insert(messages)
     .values({ creatorId, direction: "in", subject: subject ?? null, body: text, status: "received", classification: t.label, draftReply: t.draft })
@@ -212,7 +215,7 @@ export async function draftFollowUps(creatorIds?: string[]) {
   for (const d of due) {
     if (creatorIds && !creatorIds.includes(d.creator.id)) continue;
     const card = await rateCardFor(d.creator.rateCardId);
-    const f = await writeFollowUp({ brand, creatorName: d.creator.name, step: d.step, originalBody: d.originalBody, baseCents: card.baseCents, cpmCents: card.cpmCents });
+    const f = await writeFollowUp({ brand, creatorName: d.creator.name, step: d.step, originalBody: d.originalBody, offer: offerLine(card) });
     source = f._source;
     await db.insert(messages).values({ creatorId: d.creator.id, direction: "out", subject: d.subject, body: f.body, status: "draft" });
     drafted++;

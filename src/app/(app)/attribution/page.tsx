@@ -2,14 +2,17 @@ import { Suspense } from "react";
 import Loading from "@/app/(app)/loading";
 import Link from "next/link";
 import { connection } from "next/server";
-import { Card, Grid, PageHeader, Stat, Table, Td, Tabs, Empty, Notice, Meter, MarginBar, ConfidenceBadge, StageBadge, cx } from "@/components/ui";
+import { Card, Grid, PageHeader, Stat, Table, Td, Tabs, Empty, Notice, Meter, MarginBar, ConfidenceBadge, StageBadge, Field, cx, input } from "@/components/ui";
 import { attributionReport, loadSeries, surveyBreakdown, codeStats, campaignPostTimes, surveyOptions, type AttributionReport } from "@/lib/services/attribution";
 import { spendByCreatorSince } from "@/lib/services/payouts";
 import { baselines } from "@/lib/engines/attribution";
-import { getOps } from "@/lib/settings";
+import { getBrand, getOps } from "@/lib/settings";
 import { compact, usd, usd2, pct, dateTime, isoDate, requestTime } from "@/lib/format";
 import { InstallChart, type ChartBucket, type ChartTick } from "./install-chart";
 import { publicOrigin } from "../settings/origin";
+import { ActionForm, SubmitButton } from "@/components/client";
+import { signupTotals } from "@/lib/services/signups";
+import { importSignupsAction } from "./actions";
 
 export const metadata = { title: "Attribution" };
 
@@ -18,7 +21,7 @@ const HOUR = 3_600_000;
 const WINDOW_DAYS = 60;
 const TOP_COLORS = ["var(--info)", "var(--tally)", "var(--profit)"];
 
-type Tab = "overview" | "survey" | "codes";
+type Tab = "overview" | "survey" | "codes" | "signups";
 
 /** Own Suspense boundary: same-route navigations (tabs, filters) re-render below the (app) loading boundary. */
 export default function AttributionPage(props: { searchParams: Promise<{ tab?: string }> }) {
@@ -32,7 +35,7 @@ export default function AttributionPage(props: { searchParams: Promise<{ tab?: s
 async function AttributionPageContent({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   await connection();
   const sp = await searchParams;
-  const tab: Tab = sp.tab === "survey" || sp.tab === "codes" ? sp.tab : "overview";
+  const tab: Tab = sp.tab === "survey" || sp.tab === "codes" || sp.tab === "signups" ? sp.tab : "overview";
   const report = await attributionReport(WINDOW_DAYS);
   const t = report.totals;
   const attributedShare = t.revenueCents ? t.attributedRevenueCents / t.revenueCents : 0;
@@ -61,6 +64,7 @@ async function AttributionPageContent({ searchParams }: { searchParams: Promise<
             { key: "overview", label: "By creator", href: "/attribution", count: report.rows.length },
             { key: "survey", label: "Survey", href: "/attribution?tab=survey" },
             { key: "codes", label: "Codes & links", href: "/attribution?tab=codes" },
+            { key: "signups", label: "Waitlist signups", href: "/attribution?tab=signups" },
           ]}
         />
       </div>
@@ -68,6 +72,7 @@ async function AttributionPageContent({ searchParams }: { searchParams: Promise<
       {tab === "overview" && <Overview report={report} />}
       {tab === "survey" && <Survey />}
       {tab === "codes" && <Codes />}
+      {tab === "signups" && <Signups />}
     </>
   );
 }
@@ -334,6 +339,57 @@ function BreakdownList({ items, max, share, tone }: { items: { key: string; labe
 }
 
 // ─── Codes & links ──────────────────────────────────────────────────────────
+
+async function Signups() {
+  const [rows, origin, brand] = await Promise.all([signupTotals(), publicOrigin(), getBrand()]);
+  const total = rows.reduce((a, r) => a + r.signups, 0);
+  return (
+    <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_380px]">
+      <Card title="Signups through creator links" action={<span className="num text-[13px] text-muted">{compact(total)} total</span>} flush>
+        {rows.length === 0 ? (
+          <div className="p-4">
+            <Empty title="No waitlist signups yet">Import your waitlist export on the right. Signups inside a video&apos;s view window earn the creator the signup bonus on their next statement.</Empty>
+          </div>
+        ) : (
+          <Table head={["Creator", "Code", { label: "Signups", align: "right" }, "Latest"]}>
+            {rows.map((r) => (
+              <tr key={r.creatorId}>
+                <Td>
+                  <Link href={`/creators/${r.creatorId}`} className="font-bold hover:underline">
+                    {r.name}
+                  </Link>
+                </Td>
+                <Td className="num">{r.code}</Td>
+                <Td right mono>
+                  {compact(r.signups)}
+                </Td>
+                <Td className="text-ink-2">{dateTime(new Date(r.last))}</Td>
+              </tr>
+            ))}
+          </Table>
+        )}
+      </Card>
+      <div className="space-y-4">
+        <Card title="Import waitlist signups">
+          <ActionForm action={importSignupsAction} className="space-y-3" resetOnSuccess>
+            <Field label="Waitlist export (CSV)" hint="Needs an email column, the ref code column and a signup date. Each person counts once, so importing the same file twice is safe.">
+              <input type="file" name="file" accept=".csv,text/csv" className={input} />
+            </Field>
+            <Field label="…or paste rows">
+              <textarea name="csv" rows={4} className={cx(input, "font-mono text-[12px]")} placeholder={"email,ref,signed up\nfan@example.com,SAMHEAT,2026-10-21 15:04"} />
+            </Field>
+            <SubmitButton variant="primary" pendingText="Importing…">
+              Import signups
+            </SubmitButton>
+          </ActionForm>
+        </Card>
+        <Notice tone="info">
+          Creator links send people to <span className="num">{brand.appUrl}/?ref=CODE</span>. Your waitlist form has to save that ref (most form tools can capture it from the page URL into a hidden field), or signups can&apos;t be matched to a creator. To send signups automatically instead of importing, POST them to <span className="num">{origin}/api/signups</span> with the signups secret.
+        </Notice>
+      </div>
+    </div>
+  );
+}
 
 async function Codes() {
   const [rows, origin] = await Promise.all([codeStats(WINDOW_DAYS), publicOrigin()]);

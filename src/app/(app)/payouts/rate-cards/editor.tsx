@@ -4,6 +4,7 @@ import { useState } from "react";
 import { ActionForm, SubmitButton } from "@/components/client";
 import { Card, Field, input, btn, btnSm, cx } from "@/components/ui";
 import { expectedCostPerVideo, performancePay, resolveTier, type RateCardRules } from "@/lib/engines/rate-card";
+import { offerTerms } from "@/lib/engines/offer";
 import { usd2, compact } from "@/lib/format";
 import { saveRateCardAction } from "./actions";
 
@@ -20,6 +21,11 @@ export type CardInput = {
   milestones: { views: number; bonusCents: number }[];
   tiers: { name: string; minTypicalViews: number; baseCents: number; cpmCents: number }[];
   referralBonusCents: number;
+  quotaScope: "month" | "total";
+  milestoneMode: "all" | "highest";
+  signupBonusCents: number;
+  bonusCapCents: number;
+  perks: string;
 };
 
 const d = (c: number) => (c / 100).toFixed(c % 100 ? 2 : 0);
@@ -43,10 +49,16 @@ export function RateCardEditor({ card }: { card: CardInput }) {
     videosPerMonth: String(card.videosPerMonth),
     minViews: String(card.minViewsForCpm),
     referral: d(card.referralBonusCents),
+    quotaScope: card.quotaScope,
+    milestoneMode: card.milestoneMode,
+    signupBonus: d(card.signupBonusCents),
+    bonusCap: d(card.bonusCapCents),
+    perks: card.perks,
   });
   const [milestones, setMilestones] = useState<MRow[]>(card.milestones.map((m) => ({ views: String(m.views), bonus: d(m.bonusCents) })));
   const [tiers, setTiers] = useState<TRow[]>(card.tiers.map((t) => ({ name: t.name, min: String(t.minTypicalViews), base: d(t.baseCents), cpm: d(t.cpmCents) })));
-  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const set = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF((x) => ({ ...x, [k]: e.target.value }));
+  const total = f.quotaScope === "total";
 
   const rules: RateCardRules = {
     baseCents: c(f.base),
@@ -58,6 +70,10 @@ export function RateCardEditor({ card }: { card: CardInput }) {
     minViewsForCpm: n(f.minViews),
     milestones: milestones.filter((m) => n(m.views) > 0 && c(m.bonus) > 0).map((m) => ({ views: n(m.views), bonusCents: c(m.bonus) })),
     tiers: tiers.filter((t) => t.name.trim()).map((t) => ({ name: t.name.trim(), minTypicalViews: n(t.min), baseCents: c(t.base), cpmCents: c(t.cpm) })),
+    quotaScope: total ? "total" : "month",
+    milestoneMode: f.milestoneMode === "highest" ? "highest" : "all",
+    signupBonusCents: c(f.signupBonus),
+    bonusCapCents: c(f.bonusCap),
   };
 
   return (
@@ -72,7 +88,7 @@ export function RateCardEditor({ card }: { card: CardInput }) {
 
         <Card title="Pay per video">
           <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-            <Money label="Base per video" name="base" value={f.base} onChange={set("base")} hint="Paid for each approved video, up to the monthly quota." />
+            <Money label="Base per video" name="base" value={f.base} onChange={set("base")} hint={total ? "Paid for each approved video, up to the trial's video count." : "Paid for each approved video, up to the monthly quota."} />
             <Money label="Pay per 1K views" name="cpm" value={f.cpm} onChange={set("cpm")} hint="On credible views only (bots and paid boosts removed)." />
             <Field label="Min views for per-view pay" hint="Below this, the video earns base pay only.">
               <input name="minViews" value={f.minViews} onChange={set("minViews")} inputMode="numeric" className={cx(input, "num")} />
@@ -83,13 +99,19 @@ export function RateCardEditor({ card }: { card: CardInput }) {
           </div>
         </Card>
 
-        <Card title="Caps and quota">
-          <div className="grid gap-3 sm:grid-cols-3">
-            <Money label="Per-video cap" name="perVideoCap" value={f.perVideoCap} onChange={set("perVideoCap")} hint="Most one video can earn, base included." />
-            <Money label="Monthly cap" name="monthlyCap" value={f.monthlyCap} onChange={set("monthlyCap")} hint="Most one creator can earn in a month, before referral bonuses." />
-            <Field label="Videos per month" hint="Base pay stops after this many videos in a month.">
+        <Card title="Videos and caps">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Field label="Base pay covers">
+              <select name="quotaScope" value={f.quotaScope} onChange={set("quotaScope")} className={input}>
+                <option value="total">A set number of videos in total (a trial)</option>
+                <option value="month">Up to a number of videos each month</option>
+              </select>
+            </Field>
+            <Field label={total ? "Videos in total" : "Videos per month"} hint={total ? "Base pay stops after this many approved videos." : "Base pay stops after this many videos in a month."}>
               <input name="videosPerMonth" value={f.videosPerMonth} onChange={set("videosPerMonth")} inputMode="numeric" className={cx(input, "num")} />
             </Field>
+            <Money label="Per-video cap" name="perVideoCap" value={f.perVideoCap} onChange={set("perVideoCap")} hint="Most one video can earn, base included. 0 = no cap." />
+            <Money label="Monthly cap" name="monthlyCap" value={f.monthlyCap} onChange={set("monthlyCap")} hint="Most one creator can earn in a month, before referral bonuses. 0 = no cap." />
           </div>
         </Card>
 
@@ -101,6 +123,14 @@ export function RateCardEditor({ card }: { card: CardInput }) {
             </button>
           }
         >
+          <div className="mb-3 max-w-sm">
+            <Field label="How milestones pay">
+              <select name="milestoneMode" value={f.milestoneMode} onChange={set("milestoneMode")} className={input}>
+                <option value="highest">Only the highest one reached</option>
+                <option value="all">Every milestone reached, added together</option>
+              </select>
+            </Field>
+          </div>
           {milestones.length === 0 ? (
             <p className="text-ink-2">No milestones. Add one to pay a one-time bonus when a video passes a view count.</p>
           ) : (
@@ -161,6 +191,19 @@ export function RateCardEditor({ card }: { card: CardInput }) {
           )}
         </Card>
 
+        <Card title="Signups and bonus cap">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <Money label="Per waitlist signup" name="signupBonus" value={f.signupBonus} onChange={set("signupBonus")} hint="For each waitlist signup through the creator's link within the view window after a post. Bring signups in from Attribution. 0 = off." />
+            <Money label="Bonus cap per creator" name="bonusCap" value={f.bonusCap} onChange={set("bonusCap")} hint="Most a creator can earn from milestones plus signups, across every statement. Base pay isn't capped by this. 0 = no cap." />
+          </div>
+        </Card>
+
+        <Card title="Perks">
+          <Field label="Perks, one per line" hint="Non-cash extras. They're mentioned in outreach emails and shown in the contract and the creator portal.">
+            <textarea name="perks" value={f.perks} onChange={set("perks")} rows={3} className={input} placeholder={"First samples from the first production run\nA Hot Mess Club card"} />
+          </Field>
+        </Card>
+
         <Card title="Referrals">
           <div className="max-w-xs">
             <Money label="Referral bonus" name="referral" value={f.referral} onChange={set("referral")} hint="$100–$200, paid to the referrer once the friend they brought in becomes active." />
@@ -175,8 +218,16 @@ export function RateCardEditor({ card }: { card: CardInput }) {
         </div>
       </ActionForm>
 
-      <div className="xl:sticky xl:top-6 xl:self-start">
+      <div className="space-y-4 xl:sticky xl:top-6 xl:self-start">
         <Preview rules={rules} />
+        <Card title="How creators read it">
+          <p className="mb-2 text-[13px] text-muted">The same wording goes into reply drafts and the creator portal; openers use a one-sentence version.</p>
+          <ul className="list-disc space-y-1 pl-5 text-[14px] text-ink-2">
+            {offerTerms({ ...rules, perks: f.perks }).map((t) => (
+              <li key={t}>{t}</li>
+            ))}
+          </ul>
+        </Card>
       </div>
     </div>
   );
@@ -185,14 +236,23 @@ export function RateCardEditor({ card }: { card: CardInput }) {
 function Preview({ rules }: { rules: RateCardRules }) {
   const [views, setViews] = useState("20000");
   const [typical, setTypical] = useState("");
+  const [signups, setSignups] = useState("10");
   const v = Math.max(0, Math.round(n(views)));
   const tv = typical.trim() ? Math.max(0, Math.round(n(typical))) : v;
+  const su = Math.max(0, Math.round(n(signups)));
   const tier = resolveTier(rules, tv);
   const perf = performancePay(rules, tier.cpmCents, v);
-  const raw = tier.baseCents + perf.cpm + perf.milestoneCents;
-  const total = expectedCostPerVideo(rules, v, tv);
+  const signupCents = su * rules.signupBonusCents;
+  const bonusCap = rules.bonusCapCents > 0 ? rules.bonusCapCents : Infinity;
+  const perVideoCap = rules.perVideoCapCents > 0 ? rules.perVideoCapCents : Infinity;
+  const raw = tier.baseCents + perf.cpm + perf.milestoneCents + signupCents;
+  const bonuses = Math.min(perf.milestoneCents + signupCents, bonusCap);
+  const total = Math.min(perVideoCap, tier.baseCents + perf.cpm + bonuses);
   const per1k = v > 0 ? Math.round((total / v) * 1000) : 0;
-  const samples = [1_000, 5_000, 20_000, 100_000, 500_000];
+  const samples = [1_000, 10_000, 25_000, 100_000, 500_000];
+  const count = rules.videosPerMonth;
+  const allVideos = Math.min(perVideoCap * count, tier.baseCents * count + perf.cpm * count + Math.min((perf.milestoneCents + signupCents) * count, bonusCap));
+  const capped = rules.monthlyCapCents > 0 && rules.quotaScope === "month" ? Math.min(rules.monthlyCapCents, allVideos) : allVideos;
 
   return (
     <Card title="What would this video pay?">
@@ -200,18 +260,25 @@ function Preview({ rules }: { rules: RateCardRules }) {
         <Field label="Credible views">
           <input value={views} onChange={(e) => setViews(e.target.value)} inputMode="numeric" className={cx(input, "num")} />
         </Field>
-        <Field label="Creator's typical views" hint="Sets the tier. Blank = same.">
-          <input value={typical} onChange={(e) => setTypical(e.target.value)} inputMode="numeric" placeholder={String(v)} className={cx(input, "num")} />
-        </Field>
+        {rules.signupBonusCents > 0 ? (
+          <Field label="Waitlist signups" hint="Through their link, in the window.">
+            <input value={signups} onChange={(e) => setSignups(e.target.value)} inputMode="numeric" className={cx(input, "num")} />
+          </Field>
+        ) : (
+          <Field label="Creator's typical views" hint="Sets the tier. Blank = same.">
+            <input value={typical} onChange={(e) => setTypical(e.target.value)} inputMode="numeric" placeholder={String(v)} className={cx(input, "num")} />
+          </Field>
+        )}
       </div>
       <dl className="space-y-1.5 text-[14px]">
-        <Line label={`Tier: ${tier.name}`} value={`${usd2(tier.baseCents)} + ${usd2(tier.cpmCents)}/1K`} muted />
+        {rules.tiers.length > 0 && <Line label={`Tier: ${tier.name}`} value={`${usd2(tier.baseCents)} + ${usd2(tier.cpmCents)}/1K`} muted />}
         <Line label="Base" value={usd2(tier.baseCents)} />
-        <Line label={v >= rules.minViewsForCpm ? `${v.toLocaleString("en-US")} views × ${usd2(tier.cpmCents)}/1K` : `Per-view (below ${rules.minViewsForCpm.toLocaleString("en-US")} views)`} value={usd2(perf.cpm)} />
+        {tier.cpmCents > 0 && <Line label={v >= rules.minViewsForCpm ? `${v.toLocaleString("en-US")} views × ${usd2(tier.cpmCents)}/1K` : `Per-view (below ${rules.minViewsForCpm.toLocaleString("en-US")} views)`} value={usd2(perf.cpm)} />}
         {perf.milestones.map((m) => (
           <Line key={m.views} label={`Milestone ${compact(m.views)} views`} value={usd2(m.bonusCents)} />
         ))}
-        {raw > total && <Line label={`Per-video cap (${usd2(rules.perVideoCapCents)})`} value={`−${usd2(raw - total)}`} tone="loss" />}
+        {signupCents > 0 && <Line label={`${su} signups × ${usd2(rules.signupBonusCents)}`} value={usd2(signupCents)} />}
+        {raw > total && <Line label={perf.milestoneCents + signupCents > bonusCap ? `Bonus cap (${usd2(rules.bonusCapCents)})` : `Per-video cap (${usd2(rules.perVideoCapCents)})`} value={`−${usd2(raw - total)}`} tone="loss" />}
         <div className="flex items-baseline justify-between border-t border-line pt-2">
           <dt className="font-medium">This video pays</dt>
           <dd className="font-display text-[20px] font-medium tabular-nums">{usd2(total)}</dd>
@@ -220,7 +287,7 @@ function Preview({ rules }: { rules: RateCardRules }) {
       </dl>
 
       <div className="mt-4 border-t border-line pt-3">
-        <div className="mb-1.5 text-[12px] font-semibold text-muted">At other view counts</div>
+        <div className="mb-1.5 text-[12px] font-semibold text-muted">At other view counts (no signups)</div>
         <table className="w-full text-[13px]">
           <thead>
             <tr className="text-left text-muted">
@@ -243,7 +310,7 @@ function Preview({ rules }: { rules: RateCardRules }) {
           </tbody>
         </table>
         <p className="mt-2 text-[13px] text-muted">
-          A month at quota ({rules.videosPerMonth} videos at {compact(v)} views) costs at most {usd2(Math.min(rules.monthlyCapCents, total * rules.videosPerMonth))}.
+          {rules.quotaScope === "total" ? `The whole trial (${count} videos like this one)` : `A month at quota (${count} videos like this one)`} costs at most {usd2(capped)}.
         </p>
       </div>
     </Card>

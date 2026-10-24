@@ -226,6 +226,13 @@ export type ContractTerms = {
   viewWindowDays: number;
   perVideoCapCents: number;
   monthlyCapCents: number;
+  // Added with trial pricing; older contracts may not have them.
+  quotaScope?: "month" | "total";
+  milestones?: Milestone[];
+  milestoneMode?: "all" | "highest";
+  signupBonusCents?: number;
+  bonusCapCents?: number;
+  perks?: string;
   usageRights: "none" | "organic" | "paid_ads";
   usageMonths: number;
   disclosure: string;
@@ -348,9 +355,10 @@ export const attributionEvents = pgTable(
   {
     id: id(),
     creatorId: text("creator_id").references(() => creators.id, { onDelete: "set null" }),
-    kind: text("kind", { enum: ["link_click", "link_install", "promo_redemption", "survey"] }).notNull(),
+    kind: text("kind", { enum: ["link_click", "link_install", "promo_redemption", "survey", "signup"] }).notNull(),
     surveyAnswer: text("survey_answer"),
     revenueCents: integer("revenue_cents").notNull().default(0),
+    /** App user id; for waitlist signups, a SHA-256 of the normalized email so each person counts once. */
     appUserId: text("app_user_id"),
     occurredAt: ts("occurred_at").notNull(),
   },
@@ -375,11 +383,21 @@ export const rateCards = pgTable("rate_cards", {
   milestones: json<Milestone[]>("milestones").notNull(),
   tiers: json<Tier[]>("tiers").notNull(),
   referralBonusCents: integer("referral_bonus_cents").notNull().default(15000),
+  /** "month": base pay for up to videosPerMonth approved videos each month. "total": that many videos in all (a trial). */
+  quotaScope: text("quota_scope", { enum: ["month", "total"] }).notNull().default("month"),
+  /** "all": every milestone a video passes pays. "highest": only the highest one reached. */
+  milestoneMode: text("milestone_mode", { enum: ["all", "highest"] }).notNull().default("all"),
+  /** Paid per waitlist signup through the creator's link inside a video's view window. */
+  signupBonusCents: integer("signup_bonus_cents").notNull().default(0),
+  /** Most one creator can earn in milestone + signup bonuses across all statements (0 = no cap). */
+  bonusCapCents: integer("bonus_cap_cents").notNull().default(0),
+  /** Non-cash perks, one per line. Shown in outreach, the contract and the creator portal. */
+  perks: text("perks").notNull().default(""),
   createdAt: createdAt(),
 });
 
 export type LineItem = {
-  kind: "base" | "cpm" | "milestone" | "referral" | "clawback" | "cap_adjustment";
+  kind: "base" | "cpm" | "milestone" | "signup" | "referral" | "clawback" | "cap_adjustment";
   postId?: string;
   description: string;
   amountCents: number;

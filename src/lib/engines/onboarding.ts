@@ -15,6 +15,37 @@ export function taxFormFor(country: string | null | undefined): "W-9" | "W-8BEN"
 
 const usd = (c: number) => `$${(c / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+function compensation(t: ContractTerms) {
+  const w = t.viewWindowDays;
+  const lines = [`- **Base rate:** ${usd(t.baseCents)} per approved, published video, up to ${t.quotaScope === "total" ? `${t.videosPerMonth} videos in total` : "the monthly quota"}.`];
+  if (t.cpmCents > 0) lines.push(`- **Per-view pay:** ${usd(t.cpmCents)} per 1,000 qualified views.`);
+  const ms = [...(t.milestones ?? [])].sort((a, b) => a.views - b.views);
+  if (ms.length) {
+    const list = ms.map((m) => `${usd(m.bonusCents)} at ${m.views.toLocaleString("en-US")} qualified views`).join("; ");
+    lines.push(
+      t.milestoneMode === "highest"
+        ? `- **View milestones (per video):** ${list}. Only the highest milestone reached is paid; milestones are not added together.`
+        : `- **View milestones (per video):** ${list}. Each milestone reached is paid once.`,
+    );
+  }
+  if ((t.signupBonusCents ?? 0) > 0)
+    lines.push(`- **Signup bonus:** ${usd(t.signupBonusCents!)} per valid waitlist signup made through Creator's personal link within ${w} days after each video is published. Each person counts once; duplicate, self-made or automated signups don't count.`);
+  lines.push(`- **View window:** Only views (and signups) in the first **${w} days** after publication count.`);
+  lines.push("- **Qualified views** exclude views from paid promotion (boosts, Spark Ads) and views identified as automated or fraudulent.");
+  if ((t.bonusCapCents ?? 0) > 0) lines.push(`- **Bonus cap:** Milestone and signup bonuses together are capped at ${usd(t.bonusCapCents!)} for the term of this agreement.`);
+  const caps = [t.perVideoCapCents > 0 && `${usd(t.perVideoCapCents)} per video (base + per-view pay + bonuses)`, t.monthlyCapCents > 0 && `${usd(t.monthlyCapCents)} per month`].filter(Boolean);
+  if (caps.length) lines.push(`- **Pay cap:** ${caps.join(" and ")}.`);
+  return lines.join("\n");
+}
+
+function perksSection(t: ContractTerms) {
+  const perks = (t.perks ?? "")
+    .split("\n")
+    .map((p) => p.trim())
+    .filter(Boolean);
+  return perks.length ? `\n**Perks.** Creator will also receive: ${perks.join("; ")}. Perks have no cash value.\n` : "";
+}
+
 export function renderContract(p: { brand: string; creatorName: string; terms: ContractTerms; date: Date }) {
   const t = p.terms;
   const usage =
@@ -31,16 +62,12 @@ export function renderContract(p: { brand: string; creatorName: string; terms: C
 **Creator:** ${p.creatorName}
 
 ## 1. Services
-Creator will produce and publish **${t.videosPerMonth} short-form videos per month** ("Content") on Creator's own accounts, following briefs provided by Brand, for a term of **${t.termMonths} months**. Either party may end this agreement with 7 days' written notice.
+Creator will produce and publish **${t.quotaScope === "total" ? `${t.videosPerMonth} short-form videos in total` : `${t.videosPerMonth} short-form videos per month`}** ("Content") on Creator's own accounts, following briefs provided by Brand, for a term of **${t.termMonths} months**. Either party may end this agreement with 7 days' written notice.
 
 ## 2. Compensation
-- **Base rate:** ${usd(t.baseCents)} per approved, published video, up to the monthly quota.
-- **Per-view pay:** ${usd(t.cpmCents)} per 1,000 qualified views.
-- **View window:** Only views in the first **${t.viewWindowDays} days** after publication count.
-- **Qualified views** exclude views from paid promotion (boosts, Spark Ads) and views identified as automated or fraudulent.
-- **Pay cap:** ${usd(t.perVideoCapCents)} per video (base + per-view pay + bonuses) and ${usd(t.monthlyCapCents)} per month.
+${compensation(t)}
 - Payment is made monthly after Brand approves an itemized statement, via Creator's chosen payout method.
-
+${perksSection(t)}
 ## 3. Approval
 Each video must be submitted for review and approved by Brand before publishing. Unapproved videos are not paid.
 

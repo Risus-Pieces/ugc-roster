@@ -1,6 +1,6 @@
 import "server-only";
 import { and, eq, gte, inArray, lt } from "drizzle-orm";
-import { db, creators, posts, reviews, statements, referrals, contracts, type LineItem } from "@/db";
+import { db, creators, posts, reviews, statements, referrals, contracts, attributionEvents, type LineItem } from "@/db";
 import { buildStatement } from "@/lib/engines/rate-card";
 import { needs1099, form1099Threshold } from "@/lib/engines/onboarding";
 import { sendPayout } from "@/lib/integrations/payouts";
@@ -19,15 +19,20 @@ export async function generateStatements(periodStart: string, periodEnd: string)
   const prior = await db.select().from(statements).where(inArray(statements.status, ["approved", "paid"]));
   const paidLines = new Map<string, Set<string>>(); // postId → kinds paid
   const paidBasesThisMonth = new Map<string, number>();
+  const paidBasesEver = new Map<string, number>();
+  const bonusesPaid = new Map<string, number>(); // milestone + signup cents, for the bonus cap
+  const add = (m: Map<string, number>, k: string, n: number) => m.set(k, (m.get(k) ?? 0) + n);
   for (const s of prior) {
     for (const li of s.lineItems) {
+      if (li.kind === "milestone" || li.kind === "signup") add(bonusesPaid, s.creatorId, li.amountCents);
       if (!li.postId) continue;
       const set = paidLines.get(li.postId) ?? new Set();
       set.add(li.kind);
       paidLines.set(li.postId, set);
     }
-    if (s.periodStart.slice(0, 7) === periodStart.slice(0, 7))
-      paidBasesThisMonth.set(s.creatorId, (paidBasesThisMonth.get(s.creatorId) ?? 0) + s.lineItems.filter((l) => l.kind === "base").length);
+    const bases = s.lineItems.filter((l) => l.kind === "base").length;
+    add(paidBasesEver, s.creatorId, bases);
+    if (s.periodStart.slice(0, 7) === periodStart.slice(0, 7)) add(paidBasesThisMonth, s.creatorId, bases);
   }
 
   const created = [];
@@ -44,6 +49,7 @@ export async function generateStatements(periodStart: string, periodEnd: string)
     const reviewIds = ps.map((p) => p.reviewId).filter((x): x is string => Boolean(x));
     const approvedIds = new Set(reviewIds.length ? (await db.select({ id: reviews.id }).from(reviews).where(and(inArray(reviews.id, reviewIds), eq(reviews.status, "approved")))).map((r) => r.id) : []);
     const snaps = await snapshotsByPost(ps.map((p) => p.id));
+    const signupsByPost = rules.signupBonusCents > 0 ? await signupsPerPost(c.id, ps.filter((p) => !p.removedAt && p.reviewId && approvedIds.has(p.reviewId)), rules.viewWindowDays) : new Map<string, number>();
 
     const payoutPosts = ps
       .filter((p) => !p.removedAt)
@@ -58,7 +64,8 @@ export async function generateStatements(periodStart: string, periodEnd: string)
           windowViews: windowViews(snaps.get(p.id), rules.viewWindowDays, p.views),
           windowClosed: closesAt <= end.getTime(),
           basePaid: Boolean(paid?.has("base")) || p.postedAt < start,
-          performancePaid: Boolean(paid?.has("cpm") || paid?.has("milestone")),
+          performancePaid: Boolean(paid?.has("cpm") || paid?.has("milestone") || paid?.has("signup")),
+          windowSignups: signupsByPost.get(p.id) ?? 0,
         };
       });
 
@@ -77,7 +84,15 @@ export async function generateStatements(periodStart: string, periodEnd: string)
       extras.push({ kind: "referral", description: `Referral bonus — ${friend?.name ?? "friend"} became active`, amountCents: r.bonusCents });
     }
 
-    const s = buildStatement({ rules, typicalViews: scores.get(c.id)?.medianViews, tierFloor: c.tier, posts: payoutPosts, basePostsAlreadyPaidThisMonth: paidBasesThisMonth.get(c.id) ?? 0, extras });
+    const s = buildStatement({
+      rules,
+      typicalViews: scores.get(c.id)?.medianViews,
+      tierFloor: c.tier,
+      posts: payoutPosts,
+      basePostsAlreadyPaid: (rules.quotaScope === "total" ? paidBasesEver : paidBasesThisMonth).get(c.id) ?? 0,
+      bonusesAlreadyPaidCents: bonusesPaid.get(c.id) ?? 0,
+      extras,
+    });
     if (!s.lineItems.length) continue;
 
     await db.delete(statements).where(and(eq(statements.creatorId, c.id), eq(statements.periodStart, periodStart), eq(statements.periodEnd, periodEnd), eq(statements.status, "draft")));
@@ -89,6 +104,24 @@ export async function generateStatements(periodStart: string, periodEnd: string)
   }
   await log("statements", `Drafted ${created.length} statements for ${periodStart} → ${periodEnd}`);
   return created;
+}
+
+/**
+ * Waitlist signups through a creator's link, assigned to the earliest approved video whose view window
+ * (posting time + window days) contains the signup, so overlapping windows never count one signup twice.
+ * Signups outside every window aren't paid.
+ */
+async function signupsPerPost(creatorId: string, approved: { id: string; postedAt: Date }[], windowDays: number) {
+  const out = new Map<string, number>();
+  if (!approved.length) return out;
+  const events = await db.select({ at: attributionEvents.occurredAt }).from(attributionEvents).where(and(eq(attributionEvents.creatorId, creatorId), eq(attributionEvents.kind, "signup")));
+  const windows = [...approved].sort((a, b) => a.postedAt.getTime() - b.postedAt.getTime());
+  for (const e of events) {
+    const t = e.at.getTime();
+    const post = windows.find((p) => t >= p.postedAt.getTime() && t < p.postedAt.getTime() + windowDays * DAY);
+    if (post) out.set(post.id, (out.get(post.id) ?? 0) + 1);
+  }
+  return out;
 }
 
 export async function approveStatement(id: string) {

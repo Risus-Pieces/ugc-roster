@@ -10,7 +10,17 @@ export type RateCardRules = {
   minViewsForCpm: number;
   milestones: Milestone[];
   tiers: Tier[];
+  /** "month": the video quota resets monthly. "total": it covers every video the creator makes (a trial). */
+  quotaScope: "month" | "total";
+  /** "all": each milestone passed pays. "highest": only the highest milestone reached pays. */
+  milestoneMode: "all" | "highest";
+  signupBonusCents: number;
+  /** Most a creator can earn in milestone + signup bonuses, ever (0 = no cap). */
+  bonusCapCents: number;
 };
+
+/** Caps stored as 0 mean "no cap". */
+const cap = (cents: number) => (cents > 0 ? cents : Infinity);
 
 export type PayoutPost = {
   id: string;
@@ -25,6 +35,8 @@ export type PayoutPost = {
   basePaid: boolean;
   /** Performance pay already settled in a previous statement. */
   performancePaid: boolean;
+  /** Waitlist signups through the creator's link inside this video's view window (each signup counted for one video only). */
+  windowSignups?: number;
 };
 
 export type StatementInput = {
@@ -33,7 +45,10 @@ export type StatementInput = {
   /** Tier the creator was promoted to; pay never drops below it. */
   tierFloor?: string | null;
   posts: PayoutPost[];
-  basePostsAlreadyPaidThisMonth?: number;
+  /** Videos already given base pay: this month, or ever when the quota covers the whole trial. */
+  basePostsAlreadyPaid?: number;
+  /** Milestone + signup bonuses already paid to this creator, counted against the bonus cap. */
+  bonusesAlreadyPaidCents?: number;
   extras?: LineItem[]; // referral bonuses, clawbacks
 };
 
@@ -55,21 +70,25 @@ export function resolveTier(rules: RateCardRules, typicalViews = 0, floorTier?: 
 /** Performance pay (per-view + milestones) for one video, before caps. */
 export function performancePay(rules: RateCardRules, cpmCents: number, views: number) {
   const cpm = views >= rules.minViewsForCpm ? Math.round((views / 1000) * cpmCents) : 0;
-  const milestones = rules.milestones.filter((m) => views >= m.views);
+  const reached = rules.milestones.filter((m) => views >= m.views).sort((a, b) => a.views - b.views);
+  const milestones = rules.milestoneMode === "highest" ? reached.slice(-1) : reached;
   return { cpm, milestones, milestoneCents: milestones.reduce((a, m) => a + m.bonusCents, 0) };
 }
 
 /**
  * Builds an itemized statement:
- * - Base pay for approved videos, up to the monthly video quota.
- * - Per-view pay + milestone bonuses on credible views, once each video's view window closes.
- * - Per-video cap on (base + performance), then a monthly cap on the total.
+ * - Base pay for approved videos, up to the video quota (per month, or for the whole trial).
+ * - Per-view pay, milestone bonuses and signup bonuses once each video's view window closes.
+ * - Per-video cap on (base + performance), the creator's lifetime bonus cap on milestones +
+ *   signups, then a monthly cap on the total.
  * - Extras (referral bonuses, clawbacks) are added after caps.
  */
-export function buildStatement({ rules, typicalViews, tierFloor, posts, basePostsAlreadyPaidThisMonth = 0, extras = [] }: StatementInput) {
+export function buildStatement({ rules, typicalViews, tierFloor, posts, basePostsAlreadyPaid = 0, bonusesAlreadyPaidCents = 0, extras = [] }: StatementInput) {
   const tier = resolveTier(rules, typicalViews, tierFloor);
   const items: LineItem[] = [];
-  let quotaLeft = Math.max(0, rules.videosPerMonth - basePostsAlreadyPaidThisMonth);
+  let quotaLeft = Math.max(0, rules.videosPerMonth - basePostsAlreadyPaid);
+  let bonusRoom = Math.max(0, cap(rules.bonusCapCents) - bonusesAlreadyPaidCents);
+  const capNote = (paid: number, owed: number) => (paid < owed ? (bonusRoom === 0 && rules.bonusCapCents > 0 ? " (bonus cap reached)" : " (capped)") : "");
 
   const sorted = [...posts].sort((a, b) => a.postedAt.getTime() - b.postedAt.getTime());
   for (const p of sorted) {
@@ -86,7 +105,7 @@ export function buildStatement({ rules, typicalViews, tierFloor, posts, basePost
 
     if (p.windowClosed && !p.performancePaid) {
       const perf = performancePay(rules, tier.cpmCents, p.windowViews);
-      const room = Math.max(0, rules.perVideoCapCents - baseThisVideo);
+      const room = Math.max(0, cap(rules.perVideoCapCents) - baseThisVideo);
       let remaining = room;
       if (perf.cpm > 0) {
         const amt = Math.min(perf.cpm, remaining);
@@ -99,13 +118,28 @@ export function buildStatement({ rules, typicalViews, tierFloor, posts, basePost
         });
       }
       for (const m of perf.milestones) {
-        const amt = Math.min(m.bonusCents, remaining);
+        const amt = Math.min(m.bonusCents, remaining, bonusRoom);
         remaining -= amt;
+        bonusRoom -= amt;
         if (amt > 0)
           items.push({
             kind: "milestone",
             postId: p.id,
-            description: `Milestone ${m.views.toLocaleString("en-US")} views — ${p.label}`,
+            description: `Milestone ${m.views.toLocaleString("en-US")} views — ${p.label}${capNote(amt, m.bonusCents)}`,
+            amountCents: amt,
+          });
+      }
+      const signups = p.windowSignups ?? 0;
+      if (signups > 0 && rules.signupBonusCents > 0) {
+        const owed = signups * rules.signupBonusCents;
+        const amt = Math.min(owed, remaining, bonusRoom);
+        remaining -= amt;
+        bonusRoom -= amt;
+        if (amt > 0)
+          items.push({
+            kind: "signup",
+            postId: p.id,
+            description: `${signups} waitlist signup${signups === 1 ? "" : "s"} × $${(rules.signupBonusCents / 100).toFixed(2)} — ${p.label}${capNote(amt, owed)}`,
             amountCents: amt,
           });
       }
@@ -113,7 +147,7 @@ export function buildStatement({ rules, typicalViews, tierFloor, posts, basePost
   }
 
   const subtotal = items.reduce((a, i) => a + i.amountCents, 0);
-  if (subtotal > rules.monthlyCapCents) {
+  if (subtotal > cap(rules.monthlyCapCents)) {
     items.push({
       kind: "cap_adjustment",
       description: `Monthly cap ($${(rules.monthlyCapCents / 100).toFixed(0)})`,
@@ -129,5 +163,5 @@ export function buildStatement({ rules, typicalViews, tierFloor, posts, basePost
 export function expectedCostPerVideo(rules: RateCardRules, views: number, typicalViews?: number) {
   const tier = resolveTier(rules, typicalViews ?? views);
   const perf = performancePay(rules, tier.cpmCents, views);
-  return Math.min(rules.perVideoCapCents, tier.baseCents + perf.cpm + perf.milestoneCents);
+  return Math.min(cap(rules.perVideoCapCents), tier.baseCents + perf.cpm + Math.min(perf.milestoneCents, cap(rules.bonusCapCents)));
 }

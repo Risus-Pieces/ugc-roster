@@ -37,9 +37,14 @@ export async function saveRateCardAction(_: ActionResult, fd: FormData): Promise
     const baseCents = dollars("base", "Base per video");
     const cpmCents = dollars("cpm", "Pay per 1K views");
     const viewWindowDays = int("viewWindowDays", "View window", 1, 30);
-    const perVideoCapCents = dollars("perVideoCap", "Per-video cap", 1);
-    const monthlyCapCents = dollars("monthlyCap", "Monthly cap", 1);
-    const videosPerMonth = int("videosPerMonth", "Videos per month", 1, 300);
+    const perVideoCapCents = dollars("perVideoCap", "Per-video cap");
+    const monthlyCapCents = dollars("monthlyCap", "Monthly cap");
+    const quotaScope = str(fd, "quotaScope") === "total" ? "total" : "month";
+    const videosPerMonth = int("videosPerMonth", quotaScope === "total" ? "Videos in total" : "Videos per month", 1, 300);
+    const milestoneMode = str(fd, "milestoneMode") === "highest" ? "highest" : "all";
+    const signupBonusCents = dollars("signupBonus", "Per waitlist signup");
+    const bonusCapCents = dollars("bonusCap", "Bonus cap");
+    const perks = str(fd, "perks").slice(0, 1000);
     const minViewsForCpm = int("minViews", "Minimum views for per-view pay", 0, 10_000_000);
     const referralBonusCents = dollars("referral", "Referral bonus");
     need(referralBonusCents >= 10_000 && referralBonusCents <= 20_000, "Referral bonus must be between $100 and $200.");
@@ -80,11 +85,12 @@ export async function saveRateCardAction(_: ActionResult, fd: FormData): Promise
     need(new Set(tiers.map((t) => t.name.toLowerCase())).size === tiers.length, "Two tiers share a name. Rename one.");
     need(tiers.every((t) => t.name.toLowerCase() !== "standard"), `"Standard" is the name used when no tier applies. Pick another tier name.`);
 
+    // 0 means no cap.
     const topBase = Math.max(baseCents, ...tiers.map((t) => t.baseCents));
-    need(perVideoCapCents >= topBase, `The per-video cap ($${(perVideoCapCents / 100).toFixed(2)}) is below the highest base pay ($${(topBase / 100).toFixed(2)}), so per-view pay would always be $0. Raise the cap.`);
-    need(monthlyCapCents >= perVideoCapCents, "The monthly cap is below the per-video cap. Raise the monthly cap.");
+    need(perVideoCapCents === 0 || perVideoCapCents >= topBase, `The per-video cap ($${(perVideoCapCents / 100).toFixed(2)}) is below the highest base pay ($${(topBase / 100).toFixed(2)}), so bonuses would always be $0. Raise the cap, or set it to 0 for no cap.`);
+    need(monthlyCapCents === 0 || perVideoCapCents === 0 || monthlyCapCents >= perVideoCapCents, "The monthly cap is below the per-video cap. Raise the monthly cap.");
 
-    const values = { name, baseCents, cpmCents, viewWindowDays, perVideoCapCents, monthlyCapCents, videosPerMonth, minViewsForCpm, milestones, tiers, referralBonusCents };
+    const values = { name, baseCents, cpmCents, viewWindowDays, perVideoCapCents, monthlyCapCents, videosPerMonth, minViewsForCpm, milestones, tiers, referralBonusCents, quotaScope, milestoneMode, signupBonusCents, bonusCapCents, perks } as const;
     if (id) {
       const res = await db.update(rateCards).set(values).where(eq(rateCards.id, id)).returning({ id: rateCards.id });
       need(res.length > 0, "This rate card no longer exists. Reload the page.");

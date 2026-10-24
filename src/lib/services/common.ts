@@ -53,6 +53,10 @@ export const rulesOf = (c: RateCard): RateCardRules => ({
   minViewsForCpm: c.minViewsForCpm,
   milestones: c.milestones,
   tiers: c.tiers,
+  quotaScope: c.quotaScope,
+  milestoneMode: c.milestoneMode,
+  signupBonusCents: c.signupBonusCents,
+  bonusCapCents: c.bonusCapCents,
 });
 
 /** Most recent score per creator. */

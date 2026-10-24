@@ -47,6 +47,11 @@ async function RateCardsPageContent({ searchParams }: { searchParams: Promise<{ 
     milestones: c.milestones,
     tiers: c.tiers,
     referralBonusCents: c.referralBonusCents,
+    quotaScope: c.quotaScope,
+    milestoneMode: c.milestoneMode,
+    signupBonusCents: c.signupBonusCents,
+    bonusCapCents: c.bonusCapCents,
+    perks: c.perks,
   });
   // A new card starts as a copy of the selected one, so you only change what differs.
   const editing: CardInput = isNew ? { ...toInput(selected), id: undefined, name: "", referralBonusCents: brand.referralBonusCents } : toInput(selected);

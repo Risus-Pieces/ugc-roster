@@ -3,6 +3,8 @@ import { typicalViews, suggestedBaseCents } from "./creator-score";
 import { assessAuthenticity, commentQuality } from "./authenticity";
 import { extractEmails, emailsFromPage, creatorEmailsFromPage, normalizeEmail, isReservedAddress } from "./contact";
 import { emailLooksLike, looksLikeSamePerson, parseTikTokProfile, worthOpening } from "./public-profile";
+import { offerLine, offerTerms } from "./offer";
+import { cleanRef, parseSignupCsv, parseSignupDate } from "./signups";
 import { rankLookalikes } from "./lookalike";
 import { classifyReply } from "./reply-classifier";
 import { runComplianceChecks, claimedExperienceDays, overallStatus } from "./compliance";
@@ -249,6 +251,10 @@ describe("rate card", () => {
     minViewsForCpm: 1000,
     milestones: [{ views: 100_000, bonusCents: 10_000 }],
     tiers: [{ name: "Pro", minTypicalViews: 20_000, baseCents: 5000, cpmCents: 150 }],
+    quotaScope: "month",
+    milestoneMode: "all",
+    signupBonusCents: 0,
+    bonusCapCents: 0,
   };
   const p = (id: string, views: number, d: number, extra = {}) => ({
     id,
@@ -286,6 +292,45 @@ describe("rate card", () => {
   it("defers performance pay until the window closes", () => {
     const s = buildStatement({ rules, posts: [p("a", 50_000, 3, { windowClosed: false })] });
     expect(s.lineItems.map((i) => i.kind)).toEqual(["base"]);
+  });
+
+  // Sooz creator trial: $30 × 4 videos, highest milestone only, $1 per signup, $200 bonus cap, no other caps.
+  const trial: RateCardRules = {
+    baseCents: 3000,
+    cpmCents: 0,
+    viewWindowDays: 14,
+    perVideoCapCents: 0,
+    monthlyCapCents: 0,
+    videosPerMonth: 4,
+    minViewsForCpm: 0,
+    milestones: [
+      { views: 10_000, bonusCents: 2500 },
+      { views: 25_000, bonusCents: 5000 },
+      { views: 100_000, bonusCents: 10_000 },
+    ],
+    tiers: [],
+    quotaScope: "total",
+    milestoneMode: "highest",
+    signupBonusCents: 100,
+    bonusCapCents: 20_000,
+  };
+  it("trial pricing pays only the highest milestone reached, plus signups", () => {
+    const s = buildStatement({ rules: trial, posts: [p("a", 30_000, 20, { windowSignups: 12 }), p("b", 8000, 18)] });
+    expect(s.lineItems.filter((i) => i.kind === "milestone").map((i) => i.amountCents)).toEqual([5000]); // 25K, not 10K + 25K
+    expect(s.lineItems.find((i) => i.kind === "signup")?.amountCents).toBe(1200);
+    expect(s.totalCents).toBe(3000 * 2 + 5000 + 1200);
+  });
+  it("trial pricing caps base at 4 videos in total and bonuses at $200 per creator", () => {
+    const s = buildStatement({
+      rules: trial,
+      basePostsAlreadyPaid: 3,
+      bonusesAlreadyPaidCents: 15_000,
+      posts: [p("a", 150_000, 20, { windowSignups: 40 }), p("b", 150_000, 18)],
+    });
+    expect(s.lineItems.filter((i) => i.kind === "base")).toHaveLength(1); // only 1 of the 4 left
+    const bonuses = s.lineItems.filter((i) => i.kind === "milestone" || i.kind === "signup");
+    expect(bonuses.reduce((a, i) => a + i.amountCents, 0)).toBe(5000); // $200 cap − $150 already paid
+    expect(bonuses.at(-1)?.description).toMatch(/bonus cap reached/);
   });
 });
 
@@ -360,6 +405,10 @@ describe("forecast", () => {
         minViewsForCpm: 0,
         milestones: [],
         tiers: [],
+        quotaScope: "month",
+        milestoneMode: "all",
+        signupBonusCents: 0,
+        bonusCapCents: 0,
       },
     });
     expect(f.creators).toBe(75);
@@ -448,5 +497,54 @@ describe("csv import", () => {
   it("scores from aggregates", () => {
     expect(assessFromAggregates({ followers: 10000, avgViews: 4000, engagementRate: 0.06, fakeFollowersPct: 0.05 }).verdict).toBe("pass");
     expect(assessFromAggregates({ followers: 18000, avgViews: 300, engagementRate: 0.004, fakeFollowersPct: 0.4 }).verdict).toBe("fail");
+  });
+});
+
+describe("offer wording", () => {
+  const sooz = {
+    baseCents: 3000,
+    cpmCents: 0,
+    videosPerMonth: 4,
+    quotaScope: "total" as const,
+    viewWindowDays: 14,
+    milestones: [
+      { views: 25_000, bonusCents: 5000 },
+      { views: 10_000, bonusCents: 2500 },
+      { views: 100_000, bonusCents: 10_000 },
+    ],
+    milestoneMode: "highest" as const,
+    signupBonusCents: 100,
+    bonusCapCents: 20_000,
+    perks: "First samples from the first production run\nA Hot Mess Club card\n",
+  };
+  it("states the trial in one sentence for cold emails", () => {
+    expect(offerLine(sooz)).toBe("$30 per video for 4 videos, up to $100 more per video at view milestones, plus $1 for every waitlist signup from your link");
+  });
+  it("spells out every term for replies and the portal", () => {
+    expect(offerTerms(sooz)).toEqual([
+      "$30 per approved video, for 4 videos",
+      "View bonus per video (first 14 days): $25 at 10K, $50 at 25K, $100 at 100K. You get the highest level reached; they don't add up.",
+      "$1 per waitlist signup through your link, counted for 14 days after each post",
+      "Bonuses (view bonuses plus signups) top out at $200 for the whole trial",
+      "Perks: First samples from the first production run; A Hot Mess Club card",
+    ]);
+  });
+});
+
+describe("waitlist signups", () => {
+  it("reads common export columns", () => {
+    const { rows, missing } = parseSignupCsv("Email Address,Referral Code,Created At\nFan@Example.com,samheat,2026-10-21 15:04\nnobody,,\n");
+    expect(missing).toEqual([]);
+    expect(rows[0]).toMatchObject({ email: "fan@example.com", ref: "SAMHEAT" });
+    expect(rows[0].at?.getFullYear()).toBe(2026);
+    expect(rows[1]).toMatchObject({ email: null, ref: null, at: null });
+  });
+  it("says which columns are missing", () => {
+    expect(parseSignupCsv("name,email\nSam,sam@x.co").missing).toEqual(["ref", "signup date"]);
+  });
+  it("cleans refs and dates", () => {
+    expect(cleanRef("https://drinksooz.com/?ref=sam-heat&utm_source=creator")).toBe("SAM-HEAT");
+    expect(parseSignupDate("1792500000")?.toISOString()).toBe(new Date(1792500000 * 1000).toISOString());
+    expect(parseSignupDate("not a date")).toBeNull();
   });
 });
