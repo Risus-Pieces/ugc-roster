@@ -84,7 +84,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
           cold emails sent today. Every opener and follow-up gets a footer with your mailing address and an opt-out line, and creators who said no are never emailed again.
         </p>
       )}
-      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} /> : <SentTab />}
+      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} next={Number(one(sp.next) ?? 0) || 0} leftToday={Math.max(0, ops.outreach.dailySendLimit - sentToday)} dailyLimit={ops.outreach.dailySendLimit} /> : <SentTab />}
     </>
   );
 }
@@ -277,7 +277,8 @@ async function RepliesTab() {
 
 // ─── Compose ────────────────────────────────────────────────────────────────
 
-async function ComposeTab({ pick }: { pick: number }) {
+/** `pick`: tick the top N real audiences. `next`: tick the next N in the list, scored or not. */
+async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number; next: number; leftToday: number; dailyLimit: number }) {
   const [prospects, touched, draftRows, camps] = await Promise.all([
     db
       .select()
@@ -306,11 +307,15 @@ async function ComposeTab({ pick }: { pick: number }) {
   const draftCreatorBy = new Map(draftCreators.map((c) => [c.id, c]));
   const ranked = [...fresh].sort((a, b) => (scores.get(b.id)?.medianViews ?? -1) - (scores.get(a.id)?.medianViews ?? -1));
   const preselected = new Set(
-    ranked
-      .filter((c) => scores.get(c.id)?.authenticityVerdict === "pass")
-      .slice(0, pick)
-      .map((c) => c.id),
+    next > 0
+      ? ranked.slice(0, next).map((c) => c.id)
+      : ranked
+          .filter((c) => scores.get(c.id)?.authenticityVerdict === "pass")
+          .slice(0, pick)
+          .map((c) => c.id),
   );
+  // "Write openers" handles 25 at a time; default to what's left of today's sending limit.
+  const batch = Math.min(25, leftToday > 0 ? leftToday : dailyLimit);
 
   return (
     <div className="space-y-4">
@@ -329,12 +334,15 @@ async function ComposeTab({ pick }: { pick: number }) {
             </Empty>
           </div>
         ) : (
-          <TopMessageForm action={writeOpenersAction} key={`pick-${pick}`}>
+          <TopMessageForm action={writeOpenersAction} key={`pick-${pick}-${next}`}>
             <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
+              <Link href={`/outreach?tab=compose&next=${batch}`} scroll={false} className={cx(btn, btnSm)}>
+                Tick next {batch}
+              </Link>
               <Link href="/outreach?tab=compose&pick=10" scroll={false} className={cx(btn, btnSm)}>
                 Tick top 10 real audiences
               </Link>
-              {pick > 0 && (
+              {(pick > 0 || next > 0) && (
                 <Link href="/outreach?tab=compose" scroll={false} className={cx(btn, btnSm)}>
                   Clear ticks
                 </Link>

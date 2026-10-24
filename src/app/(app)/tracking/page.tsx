@@ -132,7 +132,7 @@ async function TrackingPageContent({ searchParams }: { searchParams: Promise<{ d
         <Card title="How tracking works">
           <ul className="space-y-3 text-[14px] text-ink-2">
             <li>
-              <span className="font-medium text-ink">New posts are found automatically.</span> Every connected account is checked on each sync (every 6 hours, or when you press Sync). Posts with a paid-partnership label or #ad after the creator got product access count as campaign posts.
+              <span className="font-medium text-ink">New posts are found automatically.</span> Every connected account is checked on each sync (daily at 12:00 UTC, or when you press Sync). Posts with a paid-partnership label or #ad after the creator got product access count as campaign posts.
             </li>
             <li>
               <span className="font-medium text-ink">Views are recorded at day 1, 7 and 14.</span> Pay and the leaderboard use the day-14 number (or the latest mark reached), so a slow starter isn&apos;t judged on day one.
