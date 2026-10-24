@@ -99,6 +99,17 @@ async function BrandForm() {
         </div>
       </Card>
 
+      <Card title="First email">
+        <div className="grid gap-3">
+          <Field label="Subject">
+            <input name="openerSubject" defaultValue={b.openerSubject || `Paid video collab with ${b.name}`} className={input} required />
+          </Field>
+          <Field label="Email" hint="Every new creator gets this exactly as written, with the opt-out footer added below. If you change pay in Rate cards, change it here too.">
+            <textarea name="openerBody" defaultValue={b.openerBody} className={area} rows={12} required />
+          </Field>
+        </div>
+      </Card>
+
       <Card title="Claims and disclosure">
         <div className="grid gap-3 md:grid-cols-2">
           <Field label="Allowed claims" hint="One per line. Briefs only use these; reviews flag anything else.">

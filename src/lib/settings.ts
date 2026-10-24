@@ -16,6 +16,9 @@ export type Brand = {
   allowedClaims: string[];
   bannedClaims: string[];
   disclosure: string;
+  /** The first email to a creator, sent exactly as written (blank: built from the rate card). */
+  openerSubject: string;
+  openerBody: string;
   targetCpmCents: number; // used to price creators off their floor
   referralBonusCents: number;
 };
@@ -53,6 +56,8 @@ export const DEFAULT_BRAND: Brand = {
   bannedClaims: DEFAULT_BANNED_CLAIMS,
   disclosure:
     "Creator will turn on the platform's paid-partnership label (TikTok \"Content Disclosure\", Instagram \"Paid partnership\", YouTube \"Includes paid promotion\") on every video and will not hide or remove it.",
+  openerSubject: "",
+  openerBody: "",
   targetCpmCents: 1000,
   referralBonusCents: 15000,
 };

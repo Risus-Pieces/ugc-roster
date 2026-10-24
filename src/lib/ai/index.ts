@@ -51,69 +51,6 @@ async function withFallback<T>(ai: () => Promise<T>, fallback: () => T): Promise
   }
 }
 
-// ─── Outreach opener ────────────────────────────────────────────────────────
-
-export async function writeOpener(p: {
-  brand: Brand;
-  creatorName: string;
-  handle: string;
-  platform: string;
-  /** One sentence of pay, from offerLine(). */
-  offer: string;
-  perks: string[];
-}) {
-  const first = p.creatorName.split(" ")[0];
-  return withFallback(
-    async () => {
-      const draft = await structured({
-        system: `You write cold outreach emails from ${p.brand.senderName} at ${p.brand.name} to small UGC creators (2K–20K followers). They should read like a quick note from a real person, not a pitch.
-Rules: under 90 words. Open with one short, casual line such as "Love your videos." Never mention a specific video, caption, dish or detail from their content, and never leave a placeholder or a note for the sender: the email must be ready to send as written. State the pay up front in the next sentence, using the offer exactly as given: don't add, round or change amounts. If there are perks, mention them in a few words. One line on the product. End with a low-friction question. No emojis, no exclamation marks in the subject, no "I hope this finds you well". Plain text, sign off with the sender's first name.`,
-        prompt: `Product: ${p.brand.product} — ${p.brand.valueProp}
-Creator: ${p.creatorName} (@${p.handle} on ${p.platform})
-Offer: ${p.offer}
-Perks: ${p.perks.length ? p.perks.join("; ") : "(none)"}`,
-        schema: z.object({ subject: z.string(), body: z.string() }),
-      });
-      if (/\[[^\]]*\]/.test(draft.body)) throw new Error("Draft had a placeholder left in it");
-      return draft;
-    },
-    () => ({
-      subject: `Paid video collab with ${p.brand.name}`,
-      body: `Hi ${first},
-
-Love your videos.
-
-We pay ${p.offer}.${p.perks.length ? ` Founding creators also get ${p.perks.map((x) => x.replace(/^./, (c) => c.toLowerCase())).join(" and ")}.` : ""} ${p.brand.name} is ${p.brand.valueProp.replace(/[.\s]+$/, "")}.
-
-Want me to send over a sample brief?
-
-${p.brand.senderName.split(" ")[0]}`,
-    }),
-  );
-}
-
-// ─── Follow-ups ─────────────────────────────────────────────────────────────
-
-export async function writeFollowUp(p: { brand: Brand; creatorName: string; step: number; originalBody: string; offer: string }) {
-  const first = p.creatorName.split(" ")[0];
-  const sig = p.brand.senderName.split(" ")[0];
-  return withFallback(
-    () =>
-      structured({
-        system: `You write short follow-ups to unanswered creator outreach from ${p.brand.senderName} at ${p.brand.name}.
-Rules: under 50 words, plain text, no subject line. Don't repeat the first email or guilt-trip ("just bumping this", "did you see my email"). Add one new, concrete reason to reply — follow-up 1: how simple the first video is (they film one short video from a brief, we review it, they post); follow-up 2: a polite last note that makes it easy to say no. Restate pay in one short clause. End with a yes/no question. Sign with "${sig}".`,
-        prompt: `Creator: ${p.creatorName}\nFollow-up number: ${p.step}\nPay (use exactly): ${p.offer}\nFirst email:\n"""${p.originalBody}"""`,
-        schema: z.object({ body: z.string() }),
-      }),
-    () => ({
-      body:
-        p.step === 1
-          ? `Hi ${first}, quick follow-up on this. It's one short video from a brief: you film it, we give a quick review, you post. ${p.offer.replace(/^./, (c) => c.toUpperCase())}. Want me to send a sample brief?\n\n${sig}`
-          : `Hi ${first}, last note from me. If paid videos for ${p.brand.name} aren't a fit right now, no worries at all. If they are, reply "yes" and I'll send the brief.\n\n${sig}`,
-    }),
-  );
-}
-
 // ─── Reply triage ───────────────────────────────────────────────────────────
 
 export async function triageReply(p: { brand: Brand; creatorName: string; reply: string; /** The full deal, from offerTerms(). */ terms: string[] }) {

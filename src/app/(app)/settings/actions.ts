@@ -44,6 +44,8 @@ export async function saveBrandAction(_: ActionResult, fd: FormData): Promise<Ac
       allowedClaims: lines(fd, "allowedClaims"),
       bannedClaims: lines(fd, "bannedClaims"),
       disclosure: str(fd, "disclosure"),
+      openerSubject: str(fd, "openerSubject"),
+      openerBody: str(fd, "openerBody").replace(/\r\n?/g, "\n"),
       targetCpmCents: Math.round(num(fd, "targetCpm") * 100),
       referralBonusCents: Math.round(num(fd, "referralBonus") * 100),
     };
@@ -56,6 +58,8 @@ export async function saveBrandAction(_: ActionResult, fd: FormData): Promise<Ac
     need(/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(b.senderEmail), "Sender email doesn't look like an email address.");
     need(b.allowedClaims.length > 0, "Add at least one allowed claim, one per line. Briefs and reviews check against this list.");
     need(b.disclosure.length > 0, "Add the disclosure text that goes into every contract.");
+    need(b.openerSubject.length > 0, "Add a subject for the first email.");
+    need(b.openerBody.length > 0, "Write the first email creators get.");
     need(Number.isFinite(b.targetCpmCents) && b.targetCpmCents > 0, "Target cost per 1K views must be above $0.");
     need(Number.isFinite(b.referralBonusCents) && b.referralBonusCents >= 10_000 && b.referralBonusCents <= 20_000, "Referral bonus must be between $100 and $200.");
     await saveBrand(b);

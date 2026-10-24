@@ -432,7 +432,7 @@ describe("onboarding", () => {
   });
 });
 
-import { complianceFooter, withFooter, doNotContact, followUpStatus, type MessageLite } from "./outreach";
+import { complianceFooter, withFooter, doNotContact, followUpEmail, followUpStatus, openerEmail, type MessageLite } from "./outreach";
 
 describe("outreach rules", () => {
   const t0 = new Date("2026-10-01T15:00:00Z");
@@ -565,5 +565,25 @@ describe("waitlist signups", () => {
     expect(cleanRef("https://drinksooz.com/?ref=sam-heat&utm_source=creator")).toBe("SAM-HEAT");
     expect(parseSignupDate("1792500000")?.toISOString()).toBe(new Date(1792500000 * 1000).toISOString());
     expect(parseSignupDate("not a date")).toBeNull();
+  });
+});
+
+describe("cold email text", () => {
+  const offer = "$25 per video for 4 videos, up to $100 more per video at view milestones, plus $1 for every waitlist signup from your link";
+  const brand = { name: "Sooz", senderName: "Risus Zhao", openerSubject: "Paid video collab with Sooz", openerBody: "Love your videos.\r\n\r\nWe'd pay $25 per video.\r\n\r\nRisus\r\n" };
+
+  it("sends the saved first email word for word", () => {
+    expect(openerEmail(brand, offer, ["First samples"])).toEqual({ subject: "Paid video collab with Sooz", body: "Love your videos.\n\nWe'd pay $25 per video.\n\nRisus" });
+  });
+
+  it("builds a plain email from the rate card when none is saved", () => {
+    const e = openerEmail({ name: "Sooz", senderName: "Risus Zhao" }, offer, ["First samples from our first production run"]);
+    expect(e.subject).toBe("Paid video collab with Sooz");
+    expect(e.body).toBe(`Love your videos.\n\nWe'd pay ${offer}. You'd also get first samples from our first production run.\n\nWould you be open to giving it a try?\n\nRisus`);
+  });
+
+  it("follow-ups restate the pay and never open with a name", () => {
+    expect(followUpEmail(brand, 1, offer)).toMatch(/^Quick follow-up on this\. [^]* \$25 per video for 4 videos[^]*\n\nRisus$/);
+    expect(followUpEmail(brand, 2, offer)).toMatch(/^Last note from me\. If paid videos for Sooz aren't a fit/);
   });
 });

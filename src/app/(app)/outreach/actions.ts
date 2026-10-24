@@ -69,24 +69,20 @@ export async function writeOpenersAction(_: ActionResult, fd: FormData): Promise
     const campaignId = str(fd, "campaignId") || null;
     if (!ids.length) return { ok: false, message: "Tick at least one creator" };
     if (ids.length > MAX_BATCH) return { ok: false, message: `Pick up to ${MAX_BATCH} at a time so you can read each one` };
-    let ai = 0;
-    let template = 0;
+    let done = 0;
     const errors: string[] = [];
     for (const id of ids) {
       try {
-        const r = await draftOpener(id, campaignId);
-        if (r.source === "ai") ai++;
-        else template++;
+        await draftOpener(id, campaignId);
+        done++;
       } catch (e) {
         errors.push(e instanceof Error ? e.message : String(e));
       }
     }
     revalidatePath("/outreach");
-    const done = ai + template;
-    const how = ai && template ? `${ai} by AI, ${template} from template` : ai ? "by AI" : "from template";
     return {
       ok: done > 0,
-      message: `${done} opener${done === 1 ? "" : "s"} written ${how}${errors.length ? ` · ${errors.length} failed: ${errors[0]}` : ""}. Review them below before sending.`,
+      message: `${done} opener${done === 1 ? "" : "s"} written${errors.length ? ` · ${errors.length} failed: ${errors[0]}` : ""}. Review them below before sending.`,
     };
   } catch (e) {
     return fail(e);
@@ -145,7 +141,7 @@ export async function draftFollowUpsAction(_: ActionResult, fd: FormData): Promi
     const r = await draftFollowUps(ids.length ? ids : undefined);
     revalidatePath("/outreach");
     if (!r.drafted) return { ok: false, message: "No follow-ups are due." };
-    return { ok: true, message: `${r.drafted} follow-up${r.drafted === 1 ? "" : "s"} drafted${r.source === "template" ? " from templates" : " by Claude"} · review and send them in Compose` };
+    return { ok: true, message: `${r.drafted} follow-up${r.drafted === 1 ? "" : "s"} drafted · review and send them in Compose` };
   } catch (e) {
     return fail(e);
   }

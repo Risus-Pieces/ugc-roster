@@ -1,11 +1,11 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, eq, gte, inArray, isNull } from "drizzle-orm";
 import { db, creators, creatorAccounts, messages, calls, referrals, type Stage } from "@/db";
-import { writeOpener, triageReply, writeFollowUp, aiEnabled } from "@/lib/ai";
+import { triageReply, aiEnabled } from "@/lib/ai";
 import { sendEmail, emailLive } from "@/lib/integrations/email";
 import { normalizeEmail } from "@/lib/engines/contact";
 import { getBrand, getOps } from "@/lib/settings";
-import { complianceFooter, doNotContact, followUpStatus, withFooter } from "@/lib/engines/outreach";
+import { complianceFooter, doNotContact, followUpEmail, followUpStatus, openerEmail, withFooter } from "@/lib/engines/outreach";
 import { offerLine, offerTerms, perksOf } from "@/lib/engines/offer";
 import { rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
@@ -15,25 +15,13 @@ export async function draftOpener(creatorId: string, campaignId?: string | null)
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, creatorId) });
   if (!creator) throw new Error("Creator not found");
   if (!creator.email) throw new Error(`${creator.name} has no contact email`);
-  const [brand, card, accounts] = await Promise.all([
-    getBrand(),
-    rateCardFor(creator.rateCardId),
-    db.query.creatorAccounts.findMany({ where: eq(creatorAccounts.creatorId, creatorId), orderBy: desc(creatorAccounts.followers) }),
-  ]);
-  const account = accounts[0];
-  const opener = await writeOpener({
-    brand,
-    creatorName: creator.name,
-    handle: account?.handle ?? "",
-    platform: account?.platform ?? "TikTok",
-    offer: offerLine(card),
-    perks: perksOf(card),
-  });
+  const [brand, card] = await Promise.all([getBrand(), rateCardFor(creator.rateCardId)]);
+  const opener = openerEmail(brand, offerLine(card), perksOf(card));
   const [m] = await db
     .insert(messages)
     .values({ creatorId, campaignId: campaignId ?? null, direction: "out", subject: opener.subject, body: opener.body, status: "draft" })
     .returning();
-  return { message: m, source: opener._source, error: opener._error };
+  return { message: m };
 }
 
 /** Replies should land where the app can read them: the Resend receiving address if set, else the sender. */
@@ -211,14 +199,11 @@ export async function followUpsDue() {
 export async function draftFollowUps(creatorIds?: string[]) {
   const [due, brand] = await Promise.all([followUpsDue(), getBrand()]);
   let drafted = 0;
-  let source: "ai" | "template" = "template";
   for (const d of due) {
     if (creatorIds && !creatorIds.includes(d.creator.id)) continue;
     const card = await rateCardFor(d.creator.rateCardId);
-    const f = await writeFollowUp({ brand, creatorName: d.creator.name, step: d.step, originalBody: d.originalBody, offer: offerLine(card) });
-    source = f._source;
-    await db.insert(messages).values({ creatorId: d.creator.id, direction: "out", subject: d.subject, body: f.body, status: "draft" });
+    await db.insert(messages).values({ creatorId: d.creator.id, direction: "out", subject: d.subject, body: followUpEmail(brand, d.step, offerLine(card)), status: "draft" });
     drafted++;
   }
-  return { drafted, source };
+  return { drafted };
 }

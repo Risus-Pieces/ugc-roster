@@ -53,9 +53,9 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
           <Notice tone="tally">Email is simulated — messages are logged but not delivered. Set RESEND_API_KEY and EMAIL_FROM (use a separate outreach domain with SPF, DKIM and DMARC).</Notice>
         )}
         {mode.aiLive ? (
-          <Notice tone="profit">AI drafting is on — Claude writes short openers and triages replies.</Notice>
+          <Notice tone="profit">Openers use the email in Settings → First email, word for word. Claude only sorts replies and drafts answers to them.</Notice>
         ) : (
-          <Notice>Openers and reply drafts use templates. Set ANTHROPIC_API_KEY to have Claude write them.</Notice>
+          <Notice>Openers use the email in Settings → First email, word for word. Reply drafts use templates; set ANTHROPIC_API_KEY to have Claude sort replies.</Notice>
         )}
       </div>
 

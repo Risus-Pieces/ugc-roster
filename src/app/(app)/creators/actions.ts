@@ -28,12 +28,9 @@ export async function draftOpenerAction(_: ActionResult, fd: FormData): Promise<
   try {
     const creatorId = String(fd.get("creatorId") ?? "");
     if (!creatorId) return { ok: false, message: "Missing creator" };
-    const r = await draftOpener(creatorId);
+    await draftOpener(creatorId);
     revalidatePath("/", "layout");
-    return {
-      ok: true,
-      message: `Opener drafted ${r.source === "ai" ? "with AI" : "from the template"}${r.error ? ` (AI failed: ${r.error})` : ""} — review and send it in Outreach → Compose`,
-    };
+    return { ok: true, message: "Opener drafted. Review and send it in Outreach → Compose." };
   } catch (e) {
     return fail(e);
   }

@@ -67,3 +67,27 @@ export function followUpStatus(history: MessageLite[], scheduleDays: number[], n
     originalBody: original.body ?? "",
   };
 }
+
+type Sender = { name: string; senderName: string; openerSubject?: string; openerBody?: string };
+const firstName = (s: string) => s.trim().split(/\s+/)[0] ?? "";
+const upperFirst = (s: string) => s.replace(/^./, (c) => c.toUpperCase());
+
+/**
+ * The first email to a creator: the text saved in Settings, sent exactly as written (the opt-out
+ * footer is added on send). Blank settings fall back to a plain email built from the rate card.
+ */
+export function openerEmail(brand: Sender, offer: string, perks: string[]) {
+  const subject = brand.openerSubject?.trim() || `Paid video collab with ${brand.name}`;
+  const saved = brand.openerBody?.replace(/\r\n?/g, "\n").trim();
+  if (saved) return { subject, body: saved };
+  const perkLine = perks.length ? ` You'd also get ${perks.map((p) => p.replace(/^./, (c) => c.toLowerCase())).join(" and ")}.` : "";
+  return { subject, body: `Love your videos.\n\nWe'd pay ${offer}.${perkLine}\n\nWould you be open to giving it a try?\n\n${firstName(brand.senderName)}` };
+}
+
+/** Follow-up 1 says how simple the first video is; follow-up 2 makes it easy to say no. */
+export function followUpEmail(brand: Sender, step: number, offer: string) {
+  const sig = firstName(brand.senderName);
+  return step === 1
+    ? `Quick follow-up on this. It's one short video from a brief: you film it, we give a quick review, you post. ${upperFirst(offer)}. Would you be open to giving it a try?\n\n${sig}`
+    : `Last note from me. If paid videos for ${brand.name} aren't a fit right now, no worries at all. If they are, reply "yes" and I'll send the brief.\n\n${sig}`;
+}
