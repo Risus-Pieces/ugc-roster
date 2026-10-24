@@ -83,7 +83,7 @@ Perks: ${p.perks.length ? p.perks.join("; ") : "(none)"}`,
 
 Love your videos.
 
-We pay ${p.offer}.${p.perks.length ? ` Founding creators also get ${p.perks.join(" and ").replace(/^./, (c) => c.toLowerCase())}.` : ""} ${p.brand.name} is ${p.brand.valueProp}.
+We pay ${p.offer}.${p.perks.length ? ` Founding creators also get ${p.perks.map((x) => x.replace(/^./, (c) => c.toLowerCase())).join(" and ")}.` : ""} ${p.brand.name} is ${p.brand.valueProp.replace(/[.\s]+$/, "")}.
 
 Want me to send over a sample brief?
 
