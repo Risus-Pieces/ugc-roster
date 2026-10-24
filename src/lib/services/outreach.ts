@@ -1,6 +1,6 @@
 import "server-only";
 import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
-import { db, creators, creatorAccounts, messages, posts, calls, referrals, type Stage } from "@/db";
+import { db, creators, creatorAccounts, messages, calls, referrals, type Stage } from "@/db";
 import { writeOpener, triageReply, writeFollowUp, aiEnabled } from "@/lib/ai";
 import { sendEmail, emailLive } from "@/lib/integrations/email";
 import { normalizeEmail } from "@/lib/engines/contact";
@@ -21,14 +21,11 @@ export async function draftOpener(creatorId: string, campaignId?: string | null)
     db.query.creatorAccounts.findMany({ where: eq(creatorAccounts.creatorId, creatorId), orderBy: desc(creatorAccounts.followers) }),
   ]);
   const account = accounts[0];
-  const recent = await db.select({ caption: posts.caption }).from(posts).where(eq(posts.creatorId, creatorId)).orderBy(desc(posts.postedAt)).limit(5);
   const opener = await writeOpener({
     brand,
     creatorName: creator.name,
     handle: account?.handle ?? "",
     platform: account?.platform ?? "TikTok",
-    recentCaptions: recent.map((r) => (r.caption ?? "").replace(/#\w+/g, "").trim()).filter(Boolean),
-    bio: accounts.find((a) => a.bio?.trim())?.bio, // Instagram bios aren't saved; a linked TikTok's often is
     offer: offerLine(card),
     perks: perksOf(card),
   });

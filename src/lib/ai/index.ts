@@ -58,31 +58,30 @@ export async function writeOpener(p: {
   creatorName: string;
   handle: string;
   platform: string;
-  recentCaptions: string[];
-  bio?: string | null;
   /** One sentence of pay, from offerLine(). */
   offer: string;
   perks: string[];
 }) {
   const first = p.creatorName.split(" ")[0];
   return withFallback(
-    () =>
-      structured({
-        system: `You write cold outreach emails from ${p.brand.senderName} at ${p.brand.name} to small UGC creators (2K–20K followers).
-Rules: under 100 words. Open with one specific, genuine observation about their content, from the captions or bio given. If you have neither, open with what kind of creator they are on ${p.platform} and never invent a specific video. No generic flattery. State the pay up front in the second sentence, using the offer exactly as given: don't add, round or change amounts. If there are perks, mention them in a few words. One line on the product. End with a low-friction question. No emojis, no exclamation marks in the subject, no "I hope this finds you well". Plain text, sign off with the sender's first name.`,
+    async () => {
+      const draft = await structured({
+        system: `You write cold outreach emails from ${p.brand.senderName} at ${p.brand.name} to small UGC creators (2K–20K followers). They should read like a quick note from a real person, not a pitch.
+Rules: under 90 words. Open with one short, casual line such as "Love your videos." Never mention a specific video, caption, dish or detail from their content, and never leave a placeholder or a note for the sender: the email must be ready to send as written. State the pay up front in the next sentence, using the offer exactly as given: don't add, round or change amounts. If there are perks, mention them in a few words. One line on the product. End with a low-friction question. No emojis, no exclamation marks in the subject, no "I hope this finds you well". Plain text, sign off with the sender's first name.`,
         prompt: `Product: ${p.brand.product} — ${p.brand.valueProp}
 Creator: ${p.creatorName} (@${p.handle} on ${p.platform})
-Bio: ${p.bio?.trim() || "(none)"}
-Recent video captions:\n${p.recentCaptions.length ? p.recentCaptions.slice(0, 5).map((c) => `- ${c}`).join("\n") : "(none)"}
 Offer: ${p.offer}
 Perks: ${p.perks.length ? p.perks.join("; ") : "(none)"}`,
         schema: z.object({ subject: z.string(), body: z.string() }),
-      }),
+      });
+      if (/\[[^\]]*\]/.test(draft.body)) throw new Error("Draft had a placeholder left in it");
+      return draft;
+    },
     () => ({
       subject: `Paid video collab with ${p.brand.name}`,
       body: `Hi ${first},
 
-${p.recentCaptions[0] ? `Saw your recent video ("${p.recentCaptions[0].slice(0, 60)}") and it's exactly the style that works for us.` : `Your ${p.platform} content is exactly the style that works for us.`}
+Love your videos.
 
 We pay ${p.offer}.${p.perks.length ? ` Founding creators also get ${p.perks.join(" and ").replace(/^./, (c) => c.toLowerCase())}.` : ""} ${p.brand.name} is ${p.brand.valueProp}.
 
