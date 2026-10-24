@@ -4,7 +4,7 @@ import { Pool } from "pg";
 import { and, desc, eq, inArray, sql } from "drizzle-orm";
 import { db, attributionEvents, creators } from "@/db";
 import { normalizeEmail } from "@/lib/engines/contact";
-import { cleanRef, parseSignupCsv, type SignupRow } from "@/lib/engines/signups";
+import { cleanRef, creatorHandle, parseSignupCsv, type SignupRow } from "@/lib/engines/signups";
 import { SUPABASE_ROOT_CA } from "@/lib/integrations/supabase-ca";
 import { log } from "./common";
 
@@ -79,29 +79,78 @@ export async function importSignupCsv(csv: string) {
   return recordSignups(rows);
 }
 
-/** Is the Sooz waitlist database connected (read-only login in WAITLIST_DATABASE_URL)? */
+/** Is the Sooz waitlist database connected (the roster_sync login in WAITLIST_DATABASE_URL)? */
 export const waitlistSyncConfigured = () => Boolean(process.env.WAITLIST_DATABASE_URL);
 
-/**
- * Pull signups that came through creator links straight from the Sooz waitlist (Supabase). Reads only
- * email, influencer_handle, created_at and signup_status. Safe to run any time: each person counts once,
- * and a signup flagged since the last run is removed.
- */
-export async function syncWaitlist() {
+async function withWaitlistDb<T>(fn: (pool: Pool) => Promise<T>) {
   const url = process.env.WAITLIST_DATABASE_URL;
   if (!url) throw new Error("Connect the waitlist database first (WAITLIST_DATABASE_URL).");
   // Verify the server against Supabase's CA; an sslmode in the URL would override this, so drop it.
   const connectionString = url.replace(/([?&])sslmode=[^&]*&?/, "$1").replace(/[?&]$/, "");
   const pool = new Pool({ connectionString, ssl: { ca: SUPABASE_ROOT_CA, rejectUnauthorized: true }, max: 1, connectionTimeoutMillis: 15_000 });
   try {
+    return await fn(pool);
+  } finally {
+    await pool.end();
+  }
+}
+
+/** Marks the influencer rows Roster manages; rows added by hand on the site are never touched. */
+const ROSTER_NOTE = "'Paid through Roster'";
+
+/**
+ * Keep the site's influencers table in step with Roster: creators on trial or active are listed (and
+ * active) under their handle, cut creators are switched off. The site pays nothing itself, so
+ * earnings stay disabled there.
+ */
+async function registerHandles(pool: Pool, ids?: string[]) {
+  const roster = await db
+    .select({ id: creators.id, name: creators.name, email: creators.email, code: creators.promoCode, stage: creators.stage })
+    .from(creators)
+    .where(and(inArray(creators.stage, ["trial", "active", "cut"]), sql`${creators.promoCode} is not null`, ids ? inArray(creators.id, ids) : undefined));
+  let listed = 0;
+  for (const c of roster) {
+    const active = c.stage !== "cut";
+    if (!active) {
+      await pool.query(`update public.influencers set active = false where handle = $1 and commission_note = ${ROSTER_NOTE}`, [creatorHandle(c.code!)]);
+      continue;
+    }
+    await pool.query(
+      `insert into public.influencers (handle, name, email, active, earnings_enabled, commission_note)
+       values ($1, $2, $3, true, false, ${ROSTER_NOTE})
+       on conflict (handle) do update set name = excluded.name, email = excluded.email, active = true
+       where influencers.commission_note = ${ROSTER_NOTE}`,
+      [creatorHandle(c.code!), c.name.slice(0, 120), c.email],
+    );
+    listed++;
+  }
+  return listed;
+}
+
+/** List one creator's handle on the site right away (after they move to trial or are cut). Never throws. */
+export async function registerCreatorHandle(creatorId: string) {
+  if (!waitlistSyncConfigured()) return;
+  try {
+    await withWaitlistDb((pool) => registerHandles(pool, [creatorId]));
+  } catch (e) {
+    console.error("[waitlist] couldn't register creator handle", e); // the daily sync retries
+  }
+}
+
+/**
+ * Sync with the Sooz waitlist (Supabase): register creator handles, then pull signups that came through
+ * creator links. Reads only email, influencer_handle, created_at and signup_status. Safe to run any time:
+ * each person counts once, and a signup flagged since the last run is removed.
+ */
+export async function syncWaitlist() {
+  return withWaitlistDb(async (pool) => {
+    const handles = await registerHandles(pool);
     const { rows } = await pool.query<{ email: string; influencer_handle: string; created_at: Date; signup_status: string }>(
       "select email, influencer_handle, created_at, signup_status from public.waitlist where influencer_handle is not null",
     );
     const r = await recordSignups(rows.map((w) => ({ email: w.email, ref: cleanRef(w.influencer_handle), at: w.created_at, flagged: w.signup_status !== "valid" })));
-    return { scanned: rows.length, ...r };
-  } finally {
-    await pool.end();
-  }
+    return { scanned: rows.length, handles, ...r };
+  });
 }
 
 /** One signup from the waitlist form or an automation (Zapier, Make). */

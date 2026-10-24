@@ -27,7 +27,7 @@ export async function syncWaitlistAction(): Promise<ActionResult> {
   try {
     const r = await syncWaitlist();
     revalidatePath("/attribution");
-    return { ok: true, message: `Checked ${r.scanned} signups from creator links. ${summary(r)}` };
+    return { ok: true, message: `Listed ${r.handles} creator handles on your site and checked ${r.scanned} signups from creator links. ${summary(r)}` };
   } catch (e) {
     return { ok: false, message: e instanceof Error ? e.message : String(e) };
   }

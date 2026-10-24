@@ -374,7 +374,7 @@ async function Signups() {
       <div className="space-y-4">
         {synced && (
           <Card title="Waitlist database">
-            <p className="mb-3 text-[14px] text-ink-2">Connected. New signups come in every morning; flagged ones are removed.</p>
+            <p className="mb-3 text-[14px] text-ink-2">Connected to your Supabase waitlist. Every morning Roster lists creators on trial on your site (so their /go/ links are recognized) and pulls in new signups; ones your site flags are removed.</p>
             <ActionForm action={syncWaitlistAction}>
               <SubmitButton pendingText="Syncing…">Sync now</SubmitButton>
             </ActionForm>

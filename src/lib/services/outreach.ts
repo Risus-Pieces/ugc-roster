@@ -9,6 +9,7 @@ import { complianceFooter, doNotContact, followUpStatus, withFooter } from "@/li
 import { offerLine, offerTerms, perksOf } from "@/lib/engines/offer";
 import { rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
+import { registerCreatorHandle } from "./signups";
 
 export async function draftOpener(creatorId: string, campaignId?: string | null) {
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, creatorId) });
@@ -141,6 +142,8 @@ export async function moveStage(creatorId: string, stage: Stage) {
     await generateContract(creatorId);
     await requestTaxForm(creatorId);
   }
+  // List (or switch off) their /go/ link on the site so signups through it are credited.
+  if (stage === "trial" || stage === "cut") await registerCreatorHandle(creatorId);
   if (stage === "active") {
     await db.update(referrals).set({ status: "qualified", qualifiedAt: now }).where(and(eq(referrals.referredId, creatorId), eq(referrals.status, "pending")));
   }
