@@ -37,6 +37,13 @@ export function offerLine(o: Offer) {
   return parts.length > 1 ? `${parts.slice(0, -1).join(", ")}, plus ${parts.at(-1)}` : parts[0];
 }
 
+/** The deal in a breath, for follow-ups: "4 videos at $25 each, plus bonuses when one takes off past 10K views". */
+export function shortOffer(o: Offer) {
+  const base = o.quotaScope === "total" ? `${o.videosPerMonth} videos at ${usd(o.baseCents)} each` : `${usd(o.baseCents)} a video`;
+  const first = byViews(o)[0];
+  return first ? `${base}, plus bonuses when one takes off past ${views(first.views)} views` : base;
+}
+
 /** The full deal in plain English, one point per line (reply drafts and the creator portal). */
 export function offerTerms(o: Offer) {
   const w = o.viewWindowDays;

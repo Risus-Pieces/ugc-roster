@@ -1,22 +1,36 @@
 import "server-only";
-import { and, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
 import { db, creators, creatorAccounts, messages, calls, referrals, type Stage } from "@/db";
 import { triageReply, aiEnabled } from "@/lib/ai";
 import { sendEmail, emailLive } from "@/lib/integrations/email";
 import { normalizeEmail } from "@/lib/engines/contact";
 import { getBrand, getOps } from "@/lib/settings";
 import { complianceFooter, doNotContact, followUpEmail, followUpStatus, openerEmail, withFooter } from "@/lib/engines/outreach";
-import { offerLine, offerTerms, perksOf } from "@/lib/engines/offer";
+import { offerLine, offerTerms, perksOf, shortOffer } from "@/lib/engines/offer";
 import { rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
 import { registerCreatorHandle } from "./signups";
+
+/** Each creator's handle on their biggest account, for {handle} and the greeting. */
+async function topHandles(creatorIds: string[]) {
+  const rows = creatorIds.length
+    ? await db
+        .select({ creatorId: creatorAccounts.creatorId, handle: creatorAccounts.handle })
+        .from(creatorAccounts)
+        .where(inArray(creatorAccounts.creatorId, creatorIds))
+        .orderBy(desc(creatorAccounts.followers))
+    : [];
+  const top = new Map<string, string>();
+  for (const r of rows) if (!top.has(r.creatorId)) top.set(r.creatorId, r.handle);
+  return top;
+}
 
 export async function draftOpener(creatorId: string, campaignId?: string | null) {
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, creatorId) });
   if (!creator) throw new Error("Creator not found");
   if (!creator.email) throw new Error(`${creator.name} has no contact email`);
-  const [brand, card] = await Promise.all([getBrand(), rateCardFor(creator.rateCardId)]);
-  const opener = openerEmail(brand, offerLine(card), perksOf(card));
+  const [brand, card, handles] = await Promise.all([getBrand(), rateCardFor(creator.rateCardId), topHandles([creatorId])]);
+  const opener = openerEmail(brand, offerLine(card), perksOf(card), { name: creator.name, handle: handles.get(creatorId) });
   const [m] = await db
     .insert(messages)
     .values({ creatorId, campaignId: campaignId ?? null, direction: "out", subject: opener.subject, body: opener.body, status: "draft" })
@@ -197,12 +211,14 @@ export async function followUpsDue() {
 
 /** Draft the next follow-up for each creator that's due; drafts then appear in Compose for review. */
 export async function draftFollowUps(creatorIds?: string[]) {
-  const [due, brand] = await Promise.all([followUpsDue(), getBrand()]);
+  const [all, brand] = await Promise.all([followUpsDue(), getBrand()]);
+  const due = creatorIds ? all.filter((d) => creatorIds.includes(d.creator.id)) : all;
+  const handles = await topHandles(due.map((d) => d.creator.id));
   let drafted = 0;
   for (const d of due) {
-    if (creatorIds && !creatorIds.includes(d.creator.id)) continue;
     const card = await rateCardFor(d.creator.rateCardId);
-    await db.insert(messages).values({ creatorId: d.creator.id, direction: "out", subject: d.subject, body: followUpEmail(brand, d.step, offerLine(card)), status: "draft" });
+    const body = followUpEmail(brand, d.step, shortOffer(card), { name: d.creator.name, handle: handles.get(d.creator.id) });
+    await db.insert(messages).values({ creatorId: d.creator.id, direction: "out", subject: d.subject, body, status: "draft" });
     drafted++;
   }
   return { drafted };

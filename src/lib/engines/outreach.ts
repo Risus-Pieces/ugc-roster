@@ -69,25 +69,58 @@ export function followUpStatus(history: MessageLite[], scheduleDays: number[], n
 }
 
 type Sender = { name: string; senderName: string; openerSubject?: string; openerBody?: string };
+export type Recipient = { name: string; handle?: string | null };
 const firstName = (s: string) => s.trim().split(/\s+/)[0] ?? "";
-const upperFirst = (s: string) => s.replace(/^./, (c) => c.toUpperCase());
+
+// First words that mean the "name" on file is a channel name ("Spice Combo", "The Adaptive Maritimer", "Lil Mk").
+const NOT_A_NAME = new Set(["the", "a", "we", "my", "our", "its", "im", "chef", "mr", "mrs", "ms", "dr", "lil", "big", "king", "queen", "official", "spicy", "spice", "food", "foodie", "foodies", "eats", "kitchen", "mukbang", "asmr", "pov", "tv", "team", "just", "real", "hot"]);
+// Words anywhere in the name that mean it's a channel ("Munching with Marina", "Ami Recommends").
+const CHANNEL_WORD = /\b(with|eats?|kitchen|recipes?|cooks?|cooking|foodie|food|mukbang|reviews?|recommends|bbq|official|tv|channel)\b/i;
 
 /**
- * The first email to a creator: the text saved in Settings, sent exactly as written (the opt-out
- * footer is added on send). Blank settings fall back to a plain email built from the rate card.
+ * What to call a creator in "Hey {name}!": their first name when the name on file looks like one
+ * ("Carmen Roman" → Carmen, "Stef and Nat" stays whole), otherwise @handle ("🏆 We Love Ranking Real 🥰").
  */
-export function openerEmail(brand: Sender, offer: string, perks: string[]) {
-  const subject = brand.openerSubject?.trim() || `Paid video collab with ${brand.name}`;
-  const saved = brand.openerBody?.replace(/\r\n?/g, "\n").trim();
-  if (saved) return { subject, body: saved };
-  const perkLine = perks.length ? ` You'd also get ${perks.map((p) => p.replace(/^./, (c) => c.toLowerCase())).join(" and ")}.` : "";
-  return { subject, body: `Love your videos.\n\nWe'd pay ${offer}.${perkLine}\n\nWould you be open to giving it a try?\n\n${firstName(brand.senderName)}` };
+export function greetingName(r: Recipient) {
+  const handle = r.handle?.replace(/^@/, "").trim();
+  const fallback = handle ? `@${handle}` : "there";
+  if (/[_\d.@]/.test(r.name) || CHANNEL_WORD.test(r.name)) return fallback; // handle-like ("Fullmoon_chadani") or a channel
+  const clean = r.name.replace(/[^\p{L}\p{M}\s'’&-]/gu, " ").replace(/\s+/g, " ").trim();
+  const words = clean.split(" ").filter(Boolean);
+  if (!words.length || NOT_A_NAME.has(words[0].toLowerCase().replace(/['’]/g, ""))) return fallback;
+  if (words.length <= 4 && words.some((w) => /^(and|&)$/i.test(w))) return clean; // a duo
+  let first = words[0];
+  if (/^\p{Lu}{2,}$/u.test(first)) first = first[0] + first.slice(1).toLowerCase(); // NOODLE → Noodle
+  if (!/^\p{L}[\p{Ll}\p{M}'’-]{1,11}$/u.test(first)) return fallback; // POVKitchen, single letters, run-ons like Jennylaprincess
+  return first[0].toUpperCase() + first.slice(1);
 }
 
-/** Follow-up 1 says how simple the first video is; follow-up 2 makes it easy to say no. */
-export function followUpEmail(brand: Sender, step: number, offer: string) {
+/** Fill {name} and {handle} (the bare handle; write @{handle} for the at sign). */
+export function fillPlaceholders(text: string, r: Recipient) {
+  const handle = r.handle?.replace(/^@/, "").trim();
+  const name = greetingName(r);
+  return text
+    .replace(/@?\{\s*handle\s*\}/gi, (m) => (handle ? (m.startsWith("@") ? `@${handle}` : handle) : name))
+    .replace(/\{\s*name\s*\}/gi, name);
+}
+
+/**
+ * The first email to a creator: the text saved in Settings with {name} and {handle} filled in, otherwise
+ * sent as written (the opt-out footer is added on send). Blank settings fall back to a plain email.
+ */
+export function openerEmail(brand: Sender, offer: string, perks: string[], to: Recipient) {
+  const subject = brand.openerSubject?.trim() || `Paid video collab with ${brand.name}`;
+  const saved = brand.openerBody?.replace(/\r\n?/g, "\n").trim();
+  const perkLine = perks.length ? ` You'd also get ${perks.map((p) => p.replace(/^./, (c) => c.toLowerCase())).join(" and ")}.` : "";
+  const body = saved || `Hey {name}!\n\nLove your videos.\n\nWe'd pay ${offer}.${perkLine}\n\nWant me to send over the details?\n\n${firstName(brand.senderName)}`;
+  return { subject: fillPlaceholders(subject, to), body: fillPlaceholders(body, to) };
+}
+
+/** Follow-up 1 is a cheerful nudge with the deal in a breath; follow-up 2 makes it easy to say no. */
+export function followUpEmail(brand: Sender, step: number, shortOffer: string, to: Recipient) {
+  const name = greetingName(to);
   const sig = firstName(brand.senderName);
   return step === 1
-    ? `Quick follow-up on this. It's one short video from a brief: you film it, we give a quick review, you post. ${upperFirst(offer)}. Would you be open to giving it a try?\n\n${sig}`
-    : `Last note from me. If paid videos for ${brand.name} aren't a fit right now, no worries at all. If they are, reply "yes" and I'll send the brief.\n\n${sig}`;
+    ? `Hey ${name}! Popping back in case this got buried. It's ${shortOffer}, and the drink's on us. Want me to send over the details?\n\n${sig}`
+    : `Hey ${name}, last note from me! If a spicy collab isn't your thing right now, totally fine. If it is, just reply "yes" and I'll send everything over.\n\n${sig}`;
 }

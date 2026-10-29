@@ -104,7 +104,7 @@ async function BrandForm() {
           <Field label="Subject">
             <input name="openerSubject" defaultValue={b.openerSubject || `Paid video collab with ${b.name}`} className={input} required />
           </Field>
-          <Field label="Email" hint="Every new creator gets this exactly as written, with the opt-out footer added below. If you change pay in Rate cards, change it here too.">
+          <Field label="Email" hint="Sent as written, with the opt-out footer added below. {name} becomes the creator's first name (or @handle when the name on file is a channel name) and {handle} their handle, in the subject too. If you change pay in Rate cards, change it here too.">
             <textarea name="openerBody" defaultValue={b.openerBody} className={area} rows={12} required />
           </Field>
         </div>

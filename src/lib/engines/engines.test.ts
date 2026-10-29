@@ -3,7 +3,7 @@ import { typicalViews, suggestedBaseCents } from "./creator-score";
 import { assessAuthenticity, commentQuality } from "./authenticity";
 import { extractEmails, emailsFromPage, creatorEmailsFromPage, normalizeEmail, isReservedAddress } from "./contact";
 import { emailLooksLike, looksLikeSamePerson, parseTikTokProfile, worthOpening } from "./public-profile";
-import { offerLine, offerTerms } from "./offer";
+import { offerLine, offerTerms, shortOffer } from "./offer";
 import { cleanRef, creatorLink, parseSignupCsv, parseSignupDate } from "./signups";
 import { rankLookalikes } from "./lookalike";
 import { classifyReply } from "./reply-classifier";
@@ -432,7 +432,7 @@ describe("onboarding", () => {
   });
 });
 
-import { complianceFooter, withFooter, doNotContact, followUpEmail, followUpStatus, openerEmail, type MessageLite } from "./outreach";
+import { complianceFooter, withFooter, doNotContact, followUpEmail, followUpStatus, greetingName, openerEmail, type MessageLite } from "./outreach";
 
 describe("outreach rules", () => {
   const t0 = new Date("2026-10-01T15:00:00Z");
@@ -570,20 +570,43 @@ describe("waitlist signups", () => {
 
 describe("cold email text", () => {
   const offer = "$25 per video for 4 videos, up to $100 more per video at view milestones, plus $1 for every waitlist signup from your link";
-  const brand = { name: "Sooz", senderName: "Risus Zhao", openerSubject: "Paid video collab with Sooz", openerBody: "Love your videos.\r\n\r\nWe'd pay $25 per video.\r\n\r\nRisus\r\n" };
+  const brand = { name: "Sooz", senderName: "Risus Zhao", openerSubject: "Sooz x @{handle}", openerBody: "Hey {name}!\r\n\r\nLove your videos.\r\n\r\nRisus\r\n" };
 
-  it("sends the saved first email word for word", () => {
-    expect(openerEmail(brand, offer, ["First samples"])).toEqual({ subject: "Paid video collab with Sooz", body: "Love your videos.\n\nWe'd pay $25 per video.\n\nRisus" });
+  it("greets by first name only when the name on file looks like one", () => {
+    const g = (name: string, handle: string | null = "thehandle") => greetingName({ name, handle });
+    expect(g("Carmen Roman")).toBe("Carmen");
+    expect(g("Zozo Mukbang ")).toBe("@thehandle");
+    expect(g("Stef and Nat")).toBe("Stef and Nat");
+    expect(g("NOODLE")).toBe("Noodle");
+    expect(g("🏆 We Love Ranking Real 🥰")).toBe("@thehandle");
+    expect(g("Spice Combo")).toBe("@thehandle");
+    expect(g("The Adaptive Maritimer ")).toBe("@thehandle");
+    expect(g("Chef Soulja")).toBe("@thehandle");
+    expect(g("POVKitchen")).toBe("@thehandle");
+    expect(g("Munching with Marina")).toBe("@thehandle");
+    expect(g("Lil Mk")).toBe("@thehandle");
+    expect(g("Fullmoon_chadani")).toBe("@thehandle");
+    expect(g("Jennylaprincess")).toBe("@thehandle");
+    expect(g("Amber Nichole Kellehan")).toBe("Amber");
+    expect(g("Kristopher")).toBe("Kristopher");
+    expect(g("🔥🔥", null)).toBe("there");
+  });
+
+  it("fills {name} and {handle} in the saved first email", () => {
+    expect(openerEmail(brand, offer, [], { name: "Kami", handle: "@kamiavii" })).toEqual({ subject: "Sooz x @kamiavii", body: "Hey Kami!\n\nLove your videos.\n\nRisus" });
+    expect(openerEmail(brand, offer, [], { name: "Kami", handle: null }).subject).toBe("Sooz x Kami");
   });
 
   it("builds a plain email from the rate card when none is saved", () => {
-    const e = openerEmail({ name: "Sooz", senderName: "Risus Zhao" }, offer, ["First samples from our first production run"]);
+    const e = openerEmail({ name: "Sooz", senderName: "Risus Zhao" }, offer, ["First samples from our first production run"], { name: "Graci", handle: "graci" });
     expect(e.subject).toBe("Paid video collab with Sooz");
-    expect(e.body).toBe(`Love your videos.\n\nWe'd pay ${offer}. You'd also get first samples from our first production run.\n\nWould you be open to giving it a try?\n\nRisus`);
+    expect(e.body).toBe(`Hey Graci!\n\nLove your videos.\n\nWe'd pay ${offer}. You'd also get first samples from our first production run.\n\nWant me to send over the details?\n\nRisus`);
   });
 
-  it("follow-ups restate the pay and never open with a name", () => {
-    expect(followUpEmail(brand, 1, offer)).toMatch(/^Quick follow-up on this\. [^]* \$25 per video for 4 videos[^]*\n\nRisus$/);
-    expect(followUpEmail(brand, 2, offer)).toMatch(/^Last note from me\. If paid videos for Sooz aren't a fit/);
+  it("follow-ups greet the creator and keep the deal short", () => {
+    const short = shortOffer({ baseCents: 2500, cpmCents: 0, videosPerMonth: 4, quotaScope: "total", viewWindowDays: 14, milestones: [{ views: 25000, bonusCents: 5000 }, { views: 10000, bonusCents: 2500 }], milestoneMode: "highest", signupBonusCents: 100, bonusCapCents: 20000, perks: "" });
+    expect(short).toBe("4 videos at $25 each, plus bonuses when one takes off past 10K views");
+    expect(followUpEmail(brand, 1, short, { name: "Lydia Hooker" })).toBe(`Hey Lydia! Popping back in case this got buried. It's ${short}, and the drink's on us. Want me to send over the details?\n\nRisus`);
+    expect(followUpEmail(brand, 2, short, { name: "Spice Combo", handle: "spicecombo" })).toMatch(/^Hey @spicecombo, last note from me!/);
   });
 });
