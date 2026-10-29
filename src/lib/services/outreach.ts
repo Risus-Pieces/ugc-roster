@@ -10,6 +10,7 @@ import { offerLine, offerTerms, perksOf, shortOffer } from "@/lib/engines/offer"
 import { rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
 import { registerCreatorHandle } from "./signups";
+import { foodFitFor } from "./food-fit";
 
 /** Each creator's handle on their biggest account, for {handle} and the greeting. */
 async function topHandles(creatorIds: string[]) {
@@ -199,10 +200,12 @@ export async function followUpsDue() {
   const history = await db.select().from(messages).where(inArray(messages.creatorId, contacted.map((c) => c.id)));
   const byCreator = new Map<string, (typeof history)[number][]>();
   for (const m of history) byCreator.set(m.creatorId, [...(byCreator.get(m.creatorId) ?? []), m]);
+  // The first email went out before Roster could tell food creators apart; don't chase the ones who aren't.
+  const fits = await foodFitFor(contacted);
   const due = [];
   for (const c of contacted) {
     const h = byCreator.get(c.id) ?? [];
-    if (doNotContact(c.stage, h)) continue;
+    if (doNotContact(c.stage, h) || fits.get(c.id)?.fit === "not_food") continue;
     const s = followUpStatus(h, ops.outreach.followUpDays);
     if (s.due) due.push({ creator: c, ...s });
   }

@@ -75,6 +75,8 @@ const firstName = (s: string) => s.trim().split(/\s+/)[0] ?? "";
 // First words that mean the "name" on file is a channel name ("Spice Combo", "The Adaptive Maritimer", "Lil Mk").
 const NOT_A_NAME = new Set(["the", "a", "we", "my", "our", "its", "im", "chef", "mr", "mrs", "ms", "dr", "lil", "big", "king", "queen", "official", "spicy", "spice", "food", "foodie", "foodies", "eats", "kitchen", "mukbang", "asmr", "pov", "tv", "team", "just", "real", "hot"]);
 // Words anywhere in the name that mean it's a channel ("Munching with Marina", "Ami Recommends").
+// Food words inside a run-together name. Narrower than the handle list so names like Yumi or Noodle stay.
+const CHANNEL_IN_WORD = /(grub|eats|eatz|food|bites|kitchen|cook|chef|mukbang|snack|spicy|munch|hungr|recipe|bbq|grill)/i;
 const CHANNEL_WORD = /\b(with|eats?|kitchen|recipes?|cooks?|cooking|foodie|food|mukbang|reviews?|recommends|bbq|official|tv|channel)\b/i;
 
 /**
@@ -89,6 +91,7 @@ export function greetingName(r: Recipient) {
   const words = clean.split(" ").filter(Boolean);
   if (!words.length || NOT_A_NAME.has(words[0].toLowerCase().replace(/['’]/g, ""))) return fallback;
   if (words.length <= 4 && words.some((w) => /^(and|&)$/i.test(w))) return clean; // a duo
+  if (CHANNEL_IN_WORD.test(words[0])) return fallback; // "Grublife", "Bites by Danielle"
   let first = words[0];
   if (/^\p{Lu}{2,}$/u.test(first)) first = first[0] + first.slice(1).toLowerCase(); // NOODLE → Noodle
   if (!/^\p{L}[\p{Ll}\p{M}'’-]{1,11}$/u.test(first)) return fallback; // POVKitchen, single letters, run-ons like Jennylaprincess

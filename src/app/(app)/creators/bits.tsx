@@ -1,5 +1,6 @@
 import { Badge, PlatformTag, VerdictBadge, type Tone } from "@/components/ui";
 import type { CreatorScore } from "@/db/schema";
+import type { FoodFit } from "@/lib/engines/food-fit";
 
 /** Small presentational helpers shared by the Find / Reach pages. */
 
@@ -48,6 +49,17 @@ export function groupBy<T, K>(rows: T[], key: (r: T) => K) {
 }
 
 /** Authenticity verdict; the flags behind it show on hover and expand on click. */
+/** Food creator or not, read from their name, handle and bio. */
+export function FoodBadge({ fit }: { fit?: FoodFit }) {
+  if (!fit) return null;
+  const [tone, text] = fit.fit === "food" ? (["profit", "Food"] as const) : fit.fit === "not_food" ? (["loss", "Not food"] as const) : (["neutral", "Not sure"] as const);
+  return (
+    <span title={fit.reason}>
+      <Badge tone={tone}>{text}</Badge>
+    </span>
+  );
+}
+
 export function Authenticity({ score }: { score?: Pick<CreatorScore, "authenticityVerdict" | "authenticityScore" | "authenticityFlags"> | null }) {
   if (!score) return <span className="whitespace-nowrap text-[13px] text-muted">not scored</span>;
   const flags = score.authenticityFlags ?? [];

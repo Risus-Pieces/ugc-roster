@@ -6,12 +6,13 @@ import { Card, Empty, Field, Grid, Notice, PageHeader, StageBadge, Stat, Table, 
 import { ActionForm, SubmitButton } from "@/components/client";
 import { coldEmailsSentToday, followUpsDue, outreachMode } from "@/lib/services/outreach";
 import { latestScores } from "@/lib/services/common";
+import { foodFitFor } from "@/lib/services/food-fit";
 import { getBrand, getOps } from "@/lib/settings";
 import { compact, dateTime, day, pct, relative } from "@/lib/format";
 import { bookCallAction, draftFollowUpsAction, draftsAction, logReplyAction, sendReplyAction, writeOpenersAction } from "./actions";
 import { TopMessageForm } from "./top-message-form";
 import { TzInput } from "./tz-input";
-import { Authenticity, ClassBadge, Handles, MsgStatusBadge, groupBy, one, requestTime, type SearchParams } from "../creators/bits";
+import { Authenticity, ClassBadge, FoodBadge, Handles, MsgStatusBadge, groupBy, one, requestTime, type SearchParams } from "../creators/bits";
 
 export const metadata = { title: "Outreach" };
 
@@ -44,7 +45,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
 
   return (
     <>
-      <PageHeader step="02 · Reach" title="Outreach" description="Email first: cold email gets 10–20% reply rates, DMs 2–4%. Every opener mentions a recent video and states the pay up front." />
+      <PageHeader step="02 · Reach" title="Outreach" description="Email first: cold email gets 10–20% reply rates, DMs 2–4%. Every opener is your email from Settings, with each creator’s name filled in." />
 
       <div className="mb-4 grid gap-2 md:grid-cols-2">
         {mode.emailLive ? (
@@ -84,7 +85,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
           cold emails sent today. Every opener and follow-up gets a footer with your mailing address and an opt-out line, and creators who said no are never emailed again.
         </p>
       )}
-      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} next={Number(one(sp.next) ?? 0) || 0} leftToday={Math.max(0, ops.outreach.dailySendLimit - sentToday)} dailyLimit={ops.outreach.dailySendLimit} /> : <SentTab />}
+      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} next={Number(one(sp.next) ?? 0) || 0} showAll={one(sp.show) === "all"} leftToday={Math.max(0, ops.outreach.dailySendLimit - sentToday)} dailyLimit={ops.outreach.dailySendLimit} /> : <SentTab />}
     </>
   );
 }
@@ -277,8 +278,11 @@ async function RepliesTab() {
 
 // ─── Compose ────────────────────────────────────────────────────────────────
 
-/** `pick`: tick the top N real audiences. `next`: tick the next N in the list, scored or not. */
-async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number; next: number; leftToday: number; dailyLimit: number }) {
+/**
+ * `pick`: tick the top N real audiences. `next`: tick the next N in the list, scored or not. Both only
+ * tick food creators. Creators whose bio says they post about something else are hidden unless `showAll`.
+ */
+async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick: number; next: number; showAll: boolean; leftToday: number; dailyLimit: number }) {
   const [prospects, touched, draftRows, camps] = await Promise.all([
     db
       .select()
@@ -305,11 +309,18 @@ async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number;
     : [new Map(), [], []];
   const acctBy = groupBy(accts, (a) => a.creatorId);
   const draftCreatorBy = new Map(draftCreators.map((c) => [c.id, c]));
-  const ranked = [...fresh].sort((a, b) => (scores.get(b.id)?.medianViews ?? -1) - (scores.get(a.id)?.medianViews ?? -1));
+  const fits = await foodFitFor(fresh);
+  const FIT_ORDER = { food: 0, unknown: 1, not_food: 2 } as const;
+  const fitOf = (id: string) => fits.get(id)?.fit ?? "unknown";
+  const sorted = [...fresh].sort((a, b) => FIT_ORDER[fitOf(a.id)] - FIT_ORDER[fitOf(b.id)] || (scores.get(b.id)?.medianViews ?? -1) - (scores.get(a.id)?.medianViews ?? -1));
+  const notFood = sorted.filter((c) => fitOf(c.id) === "not_food").length;
+  const unsure = sorted.filter((c) => fitOf(c.id) === "unknown").length;
+  const ranked = showAll ? sorted : sorted.filter((c) => fitOf(c.id) !== "not_food");
+  const food = ranked.filter((c) => fitOf(c.id) === "food");
   const preselected = new Set(
     next > 0
-      ? ranked.slice(0, next).map((c) => c.id)
-      : ranked
+      ? food.slice(0, next).map((c) => c.id)
+      : food
           .filter((c) => scores.get(c.id)?.authenticityVerdict === "pass")
           .slice(0, pick)
           .map((c) => c.id),
@@ -319,7 +330,7 @@ async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number;
 
   return (
     <div className="space-y-4">
-      <Card title="Pick prospects" action={<span className="num text-[13px] text-muted">{ranked.length} with email, not contacted</span>} flush>
+      <Card title="Pick prospects" action={<span className="num text-[13px] text-muted">{food.length} food creators · {unsure} not sure</span>} flush>
         {ranked.length === 0 ? (
           <div className="p-4">
             <Empty
@@ -334,7 +345,7 @@ async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number;
             </Empty>
           </div>
         ) : (
-          <TopMessageForm action={writeOpenersAction} key={`pick-${pick}-${next}`}>
+          <TopMessageForm action={writeOpenersAction} key={`pick-${pick}-${next}-${showAll}`}>
             <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
               <Link href={`/outreach?tab=compose&next=${batch}`} scroll={false} className={cx(btn, btnSm)}>
                 Tick next {batch}
@@ -347,10 +358,15 @@ async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number;
                   Clear ticks
                 </Link>
               )}
-              <span className="text-[13px] text-muted">Sorted by median views.</span>
+              <span className="text-[13px] text-muted">Food creators first, then ones whose bio doesn&apos;t say; each sorted by median views. The tick buttons only pick food creators.</span>
+              {notFood > 0 && (
+                <Link href={showAll ? "/outreach?tab=compose" : "/outreach?tab=compose&show=all"} scroll={false} className="text-[13px] text-info hover:underline">
+                  {showAll ? `Hide the ${notFood} non-food creators` : `Show ${notFood} hidden non-food creators`}
+                </Link>
+              )}
             </div>
             <div className="max-h-[440px] overflow-y-auto">
-              <Table head={["", "Creator", "Handle", { label: "Median views", align: "right" }, { label: "Worst 5 avg", align: "right" }, "Audience", "Email"]}>
+              <Table head={["", "Creator", "Food?", "Handle", { label: "Median views", align: "right" }, { label: "Worst 5 avg", align: "right" }, "Audience", "Email"]}>
                 {ranked.map((c) => {
                   const s = scores.get(c.id);
                   return (
@@ -362,6 +378,9 @@ async function ComposeTab({ pick, next, leftToday, dailyLimit }: { pick: number;
                         <Link href={`/creators/${c.id}`} className="whitespace-nowrap font-medium hover:underline">
                           {c.name}
                         </Link>
+                      </Td>
+                      <Td>
+                        <FoodBadge fit={fits.get(c.id)} />
                       </Td>
                       <Td>
                         <Handles accounts={(acctBy.get(c.id) ?? []).slice(0, 2)} />

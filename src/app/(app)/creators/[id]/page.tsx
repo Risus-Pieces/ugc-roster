@@ -7,12 +7,13 @@ import { Badge, Card, ConfidenceBadge, Empty, MarginBar, Meter, PageHeader, Plat
 import { ActionForm, SubmitButton } from "@/components/client";
 import { creatorEconomics } from "@/lib/services/decisions";
 import { rateCardFor, snapshotsByPost } from "@/lib/services/common";
+import { foodFitFor } from "@/lib/services/food-fit";
 import { warmupStatus } from "@/lib/engines/onboarding";
 import { creatorLink } from "@/lib/engines/signups";
 import { getBrand } from "@/lib/settings";
 import { compact, dateTime, day, pct, relative, usd, usd2 } from "@/lib/format";
 import { draftOpenerAction, moveStageAction } from "../actions";
-import { ClassBadge, MsgStatusBadge, requestTime, viralDependence } from "../bits";
+import { ClassBadge, FoodBadge, MsgStatusBadge, requestTime, viralDependence } from "../bits";
 import { ViewsChart } from "./views-chart";
 import { Villager } from "@/components/sprites";
 
@@ -30,7 +31,7 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
   if (!creator) notFound();
 
   const onRoster = creator.stage === "trial" || creator.stage === "active";
-  const brand = await getBrand();
+  const [brand, fit] = await Promise.all([getBrand(), foodFitFor([creator]).then((m) => m.get(creator.id))]);
   const [accounts, scoreRows, recentPosts, campaignPosts, thread, contractRows, taxRows, campRows, callRows, referralsMade, referrer, card, econAll] = await Promise.all([
     db.select().from(creatorAccounts).where(eq(creatorAccounts.creatorId, id)).orderBy(desc(creatorAccounts.followers)),
     db.select().from(creatorScores).where(eq(creatorScores.creatorId, id)).orderBy(desc(creatorScores.computedAt)),
@@ -90,6 +91,10 @@ export default async function CreatorPage({ params }: { params: Promise<{ id: st
             {creator.country && <span className="num">{creator.country}</span>}
             {creator.email ? <span>{creator.email}</span> : <span className="text-muted">no email</span>}
             {creator.niche && <span className="text-muted">{creator.niche}</span>}
+            <span className="inline-flex items-center gap-1.5">
+              <FoodBadge fit={fit} />
+              <span className="text-[13px] text-muted">{fit?.reason}</span>
+            </span>
             <span className="num text-muted">
               {usd(card.baseCents)}/video + {usd2(card.cpmCents)}/1K views
             </span>

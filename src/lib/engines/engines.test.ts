@@ -589,6 +589,9 @@ describe("cold email text", () => {
     expect(g("Jennylaprincess")).toBe("@thehandle");
     expect(g("Amber Nichole Kellehan")).toBe("Amber");
     expect(g("Kristopher")).toBe("Kristopher");
+    expect(g("Grublife")).toBe("@thehandle");
+    expect(g("Erin")).toBe("Erin");
+    expect(g("Yumi")).toBe("Yumi");
     expect(g("🔥🔥", null)).toBe("there");
   });
 
@@ -608,5 +611,28 @@ describe("cold email text", () => {
     expect(short).toBe("4 videos at $25 each, plus bonuses when one takes off past 10K views");
     expect(followUpEmail(brand, 1, short, { name: "Lydia Hooker" })).toBe(`Hey Lydia! Popping back in case this got buried. It's ${short}, and the drink's on us. Want me to send over the details?\n\nRisus`);
     expect(followUpEmail(brand, 2, short, { name: "Spice Combo", handle: "spicecombo" })).toMatch(/^Hey @spicecombo, last note from me!/);
+  });
+});
+
+import { foodFit } from "./food-fit";
+describe("food fit", () => {
+  const fit = (name: string, handle: string, bio = "") => foodFit({ name, handles: [handle], bios: bio ? [bio] : [] }).fit;
+  it("spots food creators from bio words, handles and emoji", () => {
+    expect(fit("Selina", "selinaeatss", "bay area + santa cruz foodie🍽️")).toBe("food");
+    expect(fit("Sidhya Raman", "sidhyaeats")).toBe("food");
+    expect(fit("Rashad", "shad_eatz")).toBe("food");
+    expect(fit("Araceli Lazarin", "aracelilaza", "Cocina conmigo💕 + Compras de Tiktok shop")).toBe("food");
+    expect(fit("Maria Isabel", "__mariisabel", "🎀Girl Mami•Makeup•Hauls•Cooking")).toBe("food"); // food wins over other topics
+    expect(fit("Jo", "jo", "📍Austin 🌮🔥")).toBe("food");
+  });
+  it("rules out creators who post about something else", () => {
+    expect(fit("Da Biggest", "_bigniii", "hair influencer 💕")).toBe("not_food");
+    expect(fit("Nancy", "queen_mompreneur", "Mom of 3 ❤️ | Everyday Chaos + Mom Life")).toBe("not_food");
+    expect(fit("Alana Rich", "alanarich", "music artist gallivanting through life 🎤🌶️")).toBe("not_food"); // a pepper emoji isn't a niche
+    expect(fit("Willie Bee Jr", "williebeecomedy", "I'M A STAND UP GUY")).toBe("not_food");
+  });
+  it("says unknown when there's nothing to go on", () => {
+    expect(fit("Jackie", "jax_jaxjax", "📧: jackieline.dawin91@gmail.com")).toBe("unknown");
+    expect(fit("Dulcehh", "dulcehh_")).toBe("unknown");
   });
 });
