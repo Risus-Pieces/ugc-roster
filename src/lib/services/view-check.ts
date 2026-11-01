@@ -12,25 +12,26 @@ import { getPage, MAX_FAILURES_IN_A_ROW, sleep } from "./email-finder";
 const NO_DATA = "no view data";
 const RECHECK_DAYS = 14;
 const DAY = 86_400_000;
-// The embed answers 429 at one request every few seconds. It clears within a minute or two.
-const TIKTOK_DELAY_MS = 12_000;
+// The embed answers 429 at one request every few seconds, and now and then at 12-19 seconds. It clears within a minute or two.
+const TIKTOK_DELAY_MS = 18_000;
 const TOO_FAST_PAUSE_MS = 120_000;
 
-export type CheckViewsOptions = { limit?: number; dryRun?: boolean; delayMs?: number; recheckDays?: number; handles?: string[]; onProgress?: (line: string) => void };
+export type CheckViewsOptions = { limit?: number; dryRun?: boolean; delayMs?: number; recheckDays?: number; handles?: string[]; includeNoEmail?: boolean; onProgress?: (line: string) => void };
 export type CheckViewsResult = { checked: number; scored: number; noData: number; stopped: string | null };
 
 type Account = { accountId: string; creatorId: string; handle: string; stage: string };
 
-/** Prospects with emails first, then creators already contacted. Accounts checked recently are skipped. */
+/** Prospects with emails first, then creators already contacted, then (if asked) anyone without an email. Accounts checked recently are skipped. */
 async function accountsToCheck(platform: "tiktok" | "instagram", opts: CheckViewsOptions): Promise<Account[]> {
   const rows = await db
-    .select({ accountId: creatorAccounts.id, creatorId: creators.id, handle: creatorAccounts.handle, stage: creators.stage, checkedAt: creatorAccounts.viewsCheckedAt })
+    .select({ accountId: creatorAccounts.id, creatorId: creators.id, handle: creatorAccounts.handle, stage: creators.stage, email: creators.email, checkedAt: creatorAccounts.viewsCheckedAt })
     .from(creatorAccounts)
     .innerJoin(creators, eq(creators.id, creatorAccounts.creatorId))
-    .where(and(eq(creatorAccounts.platform, platform), isNotNull(creators.email), inArray(creators.stage, ["prospect", "contacted", "replied"]), opts.handles ? inArray(creatorAccounts.handle, opts.handles) : undefined));
+    .where(and(eq(creatorAccounts.platform, platform), opts.includeNoEmail ? undefined : isNotNull(creators.email), inArray(creators.stage, ["prospect", "contacted", "replied"]), opts.handles ? inArray(creatorAccounts.handle, opts.handles) : undefined));
   const cutoff = Date.now() - (opts.recheckDays ?? RECHECK_DAYS) * DAY;
   const due = opts.handles ? rows : rows.filter((r) => !r.checkedAt || r.checkedAt.getTime() < cutoff);
-  return due.sort((a, b) => Number(b.stage === "prospect") - Number(a.stage === "prospect")).slice(0, opts.limit ?? due.length);
+  const turn = (r: (typeof rows)[number]) => (!r.email ? 2 : r.stage === "prospect" ? 0 : 1);
+  return due.sort((a, b) => turn(a) - turn(b)).slice(0, opts.limit ?? due.length);
 }
 
 type Video = { externalId: string; url?: string; postedAt: Date; views: number; likes?: number; comments?: number };

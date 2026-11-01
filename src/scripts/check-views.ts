@@ -2,9 +2,9 @@
  * Check what creators' recent videos actually get, so Compose can sort and filter on typical (median) views:
  *   tiktok     TikTok creators: per-video views from their public embed
  *   instagram  Instagram creators TikTok didn't score: Business Discovery (needs INSTAGRAM_GRAPH_TOKEN)
- * Prospects with emails go first, then creators already contacted.
+ * Prospects with emails go first, then creators already contacted, then with --all anyone without an email.
  * Run it from your own computer: TikTok refuses most cloud servers, so it isn't a cron job.
- *   pnpm check-views [--only tiktok|instagram] [--limit 50] [--dry-run] [--handles a,b] [--recheck-days 14]
+ *   pnpm check-views [--only tiktok|instagram] [--all] [--limit 50] [--dry-run] [--handles a,b] [--recheck-days 14]
  * Safe to stop and re-run; accounts checked in the last two weeks are skipped.
  */
 import { pool } from "@/db";
@@ -27,6 +27,7 @@ async function main() {
     limit: flag("limit") ? Number(flag("limit")) : undefined,
     recheckDays: flag("recheck-days") ? Number(flag("recheck-days")) : undefined,
     handles: flag("handles")?.split(",").map((h) => h.trim().replace(/^@/, "").toLowerCase()),
+    includeNoEmail: process.argv.includes("--all"),
     dryRun,
     onProgress: (line: string) => console.log(line),
   };
