@@ -12,7 +12,7 @@ const HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
   Accept: "text/html,application/xhtml+xml",
 };
-const MAX_FAILURES_IN_A_ROW = 5;
+export const MAX_FAILURES_IN_A_ROW = 5;
 
 export type FindEmailsOptions = { limit?: number; dryRun?: boolean; delayMs?: number; onProgress?: (line: string) => void };
 
@@ -31,12 +31,12 @@ export type FindEmailsResult = {
 
 const emptyResult = (): FindEmailsResult => ({ checked: 0, fromBio: 0, fromLink: 0, noEmail: 0, gone: 0, differentPerson: 0, sameEmailAs: [], stopped: null });
 
-async function getPage(url: string) {
+export async function getPage(url: string) {
   const res = await fetch(url, { headers: HEADERS, redirect: "follow", signal: AbortSignal.timeout(15_000) });
   return { status: res.status, html: res.ok ? (await res.text()).slice(0, 3_000_000) : "" };
 }
 
-const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+export const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 /**
  * Visit public TikTok profiles one every few seconds. Stops if TikTok starts refusing requests

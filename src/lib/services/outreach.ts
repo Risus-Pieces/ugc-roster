@@ -1,13 +1,13 @@
 import "server-only";
-import { and, desc, eq, gte, inArray, isNull } from "drizzle-orm";
+import { and, desc, eq, gte, inArray, isNotNull, isNull, lt } from "drizzle-orm";
 import { db, creators, creatorAccounts, messages, calls, referrals, type Stage } from "@/db";
 import { triageReply, aiEnabled } from "@/lib/ai";
 import { sendEmail, emailLive } from "@/lib/integrations/email";
 import { normalizeEmail } from "@/lib/engines/contact";
 import { getBrand, getOps } from "@/lib/settings";
-import { complianceFooter, doNotContact, followUpEmail, followUpStatus, openerEmail, withFooter } from "@/lib/engines/outreach";
+import { complianceFooter, doNotContact, followUpEmail, followUpStatus, nextSendSlot, openerEmail, sendDayBounds, viewsBarStatus, withFooter } from "@/lib/engines/outreach";
 import { offerLine, offerTerms, perksOf, shortOffer } from "@/lib/engines/offer";
-import { rateCardFor, log } from "./common";
+import { latestScores, rateCardFor, log } from "./common";
 import { generateContract, requestTaxForm } from "./onboarding";
 import { registerCreatorHandle } from "./signups";
 import { foodFitFor } from "./food-fit";
@@ -42,40 +42,76 @@ export async function draftOpener(creatorId: string, campaignId?: string | null)
 /** Replies should land where the app can read them: the Resend receiving address if set, else the sender. */
 const replyToAddress = (senderEmail: string) => process.env.EMAIL_REPLY_TO?.trim() || senderEmail;
 
-/** Cold emails (openers + follow-ups) sent since midnight UTC. */
-export async function coldEmailsSentToday() {
-  const start = new Date();
-  start.setUTCHours(0, 0, 0, 0);
-  return db.$count(messages, and(eq(messages.direction, "out"), inArray(messages.status, ["sent", "simulated"]), gte(messages.sentAt, start), isNull(messages.classification)));
+const coldSent = () => and(eq(messages.direction, "out"), inArray(messages.status, ["sent", "simulated"]), isNotNull(messages.sentAt), isNull(messages.classification));
+
+/** Cold emails (openers + follow-ups) sent or scheduled on the Central day containing `day`. */
+export async function coldEmailsOn(day = new Date()) {
+  const { start, end } = sendDayBounds(day);
+  return db.$count(messages, and(coldSent(), gte(messages.sentAt, start), lt(messages.sentAt, end)));
+}
+
+/** The latest cold email, including ones Resend is still holding, so the next one lands after it. */
+async function lastColdSend() {
+  const [row] = await db.select({ at: messages.sentAt }).from(messages).where(coldSent()).orderBy(desc(messages.sentAt)).limit(1);
+  return row?.at ?? null;
 }
 
 /**
- * Sends a cold email (opener or follow-up) with the compliance footer, after checking the creator
- * hasn't opted out and today's send limit isn't used up.
+ * Schedules a cold email (opener or follow-up) with the compliance footer into the next send slot, after
+ * checking the creator hasn't opted out, clears the views bar and that day's send limit isn't used up.
  */
-export async function sendMessage(messageId: string, edits?: { subject?: string; body?: string }) {
+export async function sendMessage(messageId: string, edits?: { subject?: string; body?: string }, opts: { overrideBar?: boolean } = {}) {
   const m = await db.query.messages.findFirst({ where: eq(messages.id, messageId) });
   if (!m) throw new Error("Message not found");
   const creator = await db.query.creators.findFirst({ where: eq(creators.id, m.creatorId) });
   if (!creator?.email) throw new Error("Creator has no email");
-  const [brand, ops, history] = await Promise.all([getBrand(), getOps(), db.select().from(messages).where(eq(messages.creatorId, creator.id))]);
+  const [brand, ops, history, scores] = await Promise.all([getBrand(), getOps(), db.select().from(messages).where(eq(messages.creatorId, creator.id)), latestScores([creator.id])]);
 
   const blocked = doNotContact(creator.stage, history);
   if (blocked) throw new Error(`${creator.name} ${blocked}, so they won't be emailed again.`);
   if (emailLive() && !brand.mailingAddress.trim()) throw new Error("Add your mailing address in Settings → Outreach sender first. US law (CAN-SPAM) requires it in cold email.");
-  const sentToday = await coldEmailsSentToday();
-  if (sentToday >= ops.outreach.dailySendLimit) throw new Error(`Today's limit of ${ops.outreach.dailySendLimit} cold emails is used up. The rest can go tomorrow, or raise the limit in Settings → Outreach.`);
+  const bar = ops.outreach.minTypicalViews;
+  const score = scores.get(creator.id);
+  if (!opts.overrideBar && viewsBarStatus(score, bar) === "below") {
+    throw new Error(`${creator.name} is under your views bar (typical ${score!.medianViews.toLocaleString("en-US")}, bar ${bar.toLocaleString("en-US")}). Tick "Send anyway" on the draft to override.`);
+  }
+
+  const now = new Date();
+  const slot = nextSendSlot({ last: await lastColdSend(), now });
+  if ((await coldEmailsOn(slot)) >= ops.outreach.dailySendLimit) {
+    const day = sendDayBounds(slot).start.getTime() === sendDayBounds(now).start.getTime() ? "Today's" : "Tomorrow's";
+    throw new Error(`${day} limit of ${ops.outreach.dailySendLimit} cold emails is used up. The rest can go the day after, or raise the limit in Settings → Outreach.`);
+  }
 
   const subject = edits?.subject ?? m.subject ?? "";
   const body = withFooter(edits?.body ?? m.body, complianceFooter({ senderName: brand.senderName, brandName: brand.name, mailingAddress: brand.mailingAddress }));
-  const res = await sendEmail({ to: creator.email, subject, text: body, replyTo: replyToAddress(brand.senderEmail) });
+  const res = await sendEmail({ to: creator.email, subject, text: body, replyTo: replyToAddress(brand.senderEmail), scheduledAt: slot });
   await db
     .update(messages)
-    .set({ subject, body, status: res.status, providerMessageId: res.providerMessageId, sentAt: res.status === "failed" ? null : new Date() })
+    .set({ subject, body, status: res.status, providerMessageId: res.providerMessageId, sentAt: res.status === "failed" ? null : slot, error: res.error ?? null })
     .where(eq(messages.id, messageId));
   if (res.status !== "failed" && creator.stage === "prospect") await moveStage(creator.id, "contacted");
   if (res.status === "failed") throw new Error(`Send failed: ${res.error}`);
-  return res;
+  return { ...res, scheduledFor: slot };
+}
+
+/** Stands in for a creator in test emails, so {name} and {handle} read as they will for real. */
+const TEST_RECIPIENT = { name: "Carmen Roman", handle: "carmeneats" };
+
+/**
+ * Send the First email to your own addresses right now, footer included. It's not a cold email:
+ * it writes no creator or message rows, so it never touches the daily limit or the send slots.
+ */
+export async function sendTestOpener(addresses: string[], text: { subject: string; body: string }) {
+  const [brand, card] = await Promise.all([getBrand(), rateCardFor(null)]);
+  const opener = openerEmail({ ...brand, openerSubject: text.subject, openerBody: text.body }, offerLine(card), perksOf(card), TEST_RECIPIENT);
+  const body = withFooter(opener.body, complianceFooter({ senderName: brand.senderName, brandName: brand.name, mailingAddress: brand.mailingAddress }));
+  const results = [];
+  for (const address of addresses) {
+    const res = await sendEmail({ to: address, subject: opener.subject, text: body, replyTo: replyToAddress(brand.senderEmail) });
+    results.push({ address, status: res.status, error: res.error });
+  }
+  return results;
 }
 
 /** Inbound reply (from the email webhook or pasted in): classify, draft a response, advance the pipeline. */
@@ -110,7 +146,7 @@ export async function sendDraftReply(inboundId: string, body?: string) {
   const brand = await getBrand();
   const res = await sendEmail({ to: creator.email, subject, text, replyTo: replyToAddress(brand.senderEmail) });
   // Replies to a creator who wrote in are marked "reply" so they don't count toward the cold-email limit.
-  await db.insert(messages).values({ creatorId: creator.id, direction: "out", subject, body: text, status: res.status, classification: "other", providerMessageId: res.providerMessageId, sentAt: new Date() });
+  await db.insert(messages).values({ creatorId: creator.id, direction: "out", subject, body: text, status: res.status, classification: "other", providerMessageId: res.providerMessageId, sentAt: new Date(), error: res.error ?? null });
   await db.update(messages).set({ status: "handled" }).where(eq(messages.id, inboundId));
   if (inbound.classification === "not_interested") await moveStage(creator.id, "cut");
   return res;
@@ -200,12 +236,12 @@ export async function followUpsDue() {
   const history = await db.select().from(messages).where(inArray(messages.creatorId, contacted.map((c) => c.id)));
   const byCreator = new Map<string, (typeof history)[number][]>();
   for (const m of history) byCreator.set(m.creatorId, [...(byCreator.get(m.creatorId) ?? []), m]);
-  // The first email went out before Roster could tell food creators apart; don't chase the ones who aren't.
-  const fits = await foodFitFor(contacted);
+  // First emails went out before Roster could tell who posts about food or gets views; don't chase those who don't.
+  const [fits, scores] = await Promise.all([foodFitFor(contacted), latestScores(contacted.map((c) => c.id))]);
   const due = [];
   for (const c of contacted) {
     const h = byCreator.get(c.id) ?? [];
-    if (doNotContact(c.stage, h) || fits.get(c.id)?.fit === "not_food") continue;
+    if (doNotContact(c.stage, h) || fits.get(c.id)?.fit === "not_food" || viewsBarStatus(scores.get(c.id), ops.outreach.minTypicalViews) === "below") continue;
     const s = followUpStatus(h, ops.outreach.followUpDays);
     if (s.due) due.push({ creator: c, ...s });
   }

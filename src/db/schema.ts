@@ -71,6 +71,10 @@ export const creatorAccounts = pgTable(
     url: text("url"),
     bio: text("bio"),
     followers: integer("followers").notNull().default(0),
+    /** Last `pnpm check-views` visit, so re-runs skip recent accounts. */
+    viewsCheckedAt: ts("views_checked_at"),
+    /** Why that visit produced no score, such as "no view data". Null once scored. */
+    viewsNote: text("views_note"),
     // Official-login connection (stats come from the platform, not screenshots)
     connected: boolean("connected").notNull().default(false),
     connectedAt: ts("connected_at"),
@@ -192,7 +196,10 @@ export const messages = pgTable(
     classification: text("classification", { enum: ["interested", "rates", "not_interested", "other"] }),
     draftReply: text("draft_reply"),
     providerMessageId: text("provider_message_id"),
+    /** Cold emails are scheduled, so this can be in the future: it's when the email goes out. */
     sentAt: ts("sent_at"),
+    /** Why the send failed, as the email provider reported it. */
+    error: text("error"),
     createdAt: createdAt(),
   },
   (t) => [index("messages_creator_idx").on(t.creatorId)],

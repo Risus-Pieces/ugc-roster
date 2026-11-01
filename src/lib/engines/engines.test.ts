@@ -636,3 +636,127 @@ describe("food fit", () => {
     expect(fit("Dulcehh", "dulcehh_")).toBe("unknown");
   });
 });
+
+import { centralLabel, nextSendSlot, parseEmailList, rateLimitWaitMs, sendDayBounds, viewsBarStatus } from "./outreach";
+describe("send window", () => {
+  const central = (d: Date) => new Intl.DateTimeFormat("en-US", { timeZone: "America/Chicago", hourCycle: "h23", hour: "numeric", minute: "numeric", day: "numeric" }).format(d);
+  const at = (iso: string) => new Date(iso);
+
+  it("spaces emails 2-5 minutes after the last one", () => {
+    const now = at("2026-10-28T15:00:00Z"); // 10:00 Central
+    expect(nextSendSlot({ last: null, now, random: () => 0 }).getTime() - now.getTime()).toBe(120_000);
+    expect(nextSendSlot({ last: null, now, random: () => 0.999999 }).getTime() - now.getTime()).toBeCloseTo(300_000, -2);
+    const last = at("2026-10-28T15:30:00Z"); // already scheduled ahead of now
+    expect(nextSendSlot({ last, now, random: () => 0.5 }).getTime() - last.getTime()).toBe(210_000);
+  });
+
+  it("waits for 9am Central and rolls past 6pm to the next morning", () => {
+    expect(central(nextSendSlot({ last: null, now: at("2026-10-28T10:00:00Z"), random: () => 0 }))).toBe("28, 09:02"); // 5am Central
+    expect(central(nextSendSlot({ last: null, now: at("2026-10-28T22:59:00Z"), random: () => 0 }))).toBe("29, 09:02"); // 5:59pm plus the gap
+    expect(central(nextSendSlot({ last: null, now: at("2026-10-29T02:00:00Z"), random: () => 0 }))).toBe("29, 09:02"); // 9pm Central
+  });
+
+  it("keeps 9am right across the clock change and month ends", () => {
+    expect(central(nextSendSlot({ last: null, now: at("2026-11-01T01:00:00Z"), random: () => 0 }))).toBe("1, 09:02"); // Oct 31 8pm CDT, next morning is CST
+    expect(central(nextSendSlot({ last: null, now: at("2026-03-08T04:00:00Z"), random: () => 0 }))).toBe("8, 09:02"); // spring forward
+  });
+
+  it("counts the daily limit by the Central day, not UTC", () => {
+    const { start, end } = sendDayBounds(at("2026-10-29T02:00:00Z")); // Oct 28, 9pm Central
+    expect(start.toISOString()).toBe("2026-10-28T05:00:00.000Z");
+    expect(end.toISOString()).toBe("2026-10-29T05:00:00.000Z");
+  });
+
+  it("labels slots in Central time", () => {
+    expect(centralLabel(at("2026-10-28T15:04:00Z"))).toBe("Wed 10:04 AM Central");
+  });
+});
+
+describe("rate limit retries", () => {
+  it("waits as Resend says, backs off when it doesn't, and gives up", () => {
+    expect(rateLimitWaitMs({ status: 429, errorName: "rate_limit_exceeded", retryAfter: "2", attempt: 1 })).toBe(2000);
+    expect(rateLimitWaitMs({ status: 429, retryAfter: null, attempt: 2 })).toBe(2000);
+    expect(rateLimitWaitMs({ status: 429, retryAfter: "60", attempt: 1 })).toBe(10_000);
+    expect(rateLimitWaitMs({ status: 429, retryAfter: "1", attempt: 4 })).toBeNull();
+  });
+  it("never retries a used-up quota or other errors", () => {
+    expect(rateLimitWaitMs({ status: 429, errorName: "daily_quota_exceeded", retryAfter: "1", attempt: 1 })).toBeNull();
+    expect(rateLimitWaitMs({ status: 422, attempt: 1 })).toBeNull();
+  });
+});
+
+describe("test email addresses", () => {
+  it("splits, lowers, dedupes and reports bad ones", () => {
+    expect(parseEmailList("A@x.com, b@y.co; a@x.com\nnope")).toEqual({ valid: ["a@x.com", "b@y.co"], invalid: ["nope"] });
+  });
+});
+
+describe("views bar", () => {
+  it("only trusts medians from real posts", () => {
+    expect(viewsBarStatus({ sampleSize: 12, medianViews: 3000 }, 3000)).toBe("above");
+    expect(viewsBarStatus({ sampleSize: 12, medianViews: 2999 }, 3000)).toBe("below");
+    expect(viewsBarStatus({ sampleSize: 0, medianViews: 50000 }, 3000)).toBe("unscored"); // imported average
+    expect(viewsBarStatus(undefined, 3000)).toBe("unscored");
+  });
+});
+
+import { assessFromViews } from "./authenticity";
+import { parseTikTokEmbed, postDateFromVideoId, typicalFromVideos } from "./public-views";
+describe("TikTok embed views", () => {
+  const embed = (page: unknown) => `<html><script id="__FRONTITY_CONNECT_STATE__" type="application/json">${JSON.stringify({ source: { data: { "/embed/@x": page } } })}</script></html>`;
+  const list = [
+    { id: "7668367121163799839", playCount: 34400 }, // pinned: older than what follows
+    { id: "7676219266261077278", playCount: 1300000 }, // pinned
+    { id: "7703015917185256734", playCount: 0 },
+    { id: "7702967848880180510", playCount: 127 },
+    { id: "7702639197051473182", playCount: 286, privateItem: true },
+  ];
+
+  it("reads dates out of video IDs", () => {
+    expect(postDateFromVideoId("7668367121163799839").toISOString().slice(0, 10)).toBe("2026-07-30");
+  });
+
+  it("reads views and spots pinned videos by their place in the list", () => {
+    const p = parseTikTokEmbed(embed({ userInfo: { followerCount: 15600, privateAccount: false }, videoList: list }))!;
+    expect(p).toMatchObject({ found: true, privateAccount: false, followers: 15600 });
+    expect(p.videos.map((v) => [v.views, v.pinned])).toEqual([[34400, true], [1300000, true], [0, false], [127, false]]);
+  });
+
+  it("marks nothing pinned when the list is newest first", () => {
+    const p = parseTikTokEmbed(embed({ videoList: [{ id: "7703015917185256734", playCount: 5 }, { id: "7668367121163799839", playCount: 9 }] }))!;
+    expect(p.videos.every((v) => !v.pinned)).toBe(true);
+  });
+
+  it("tells a missing account from a refused page", () => {
+    expect(parseTikTokEmbed(embed({ errorStatus: 400 }))).toMatchObject({ found: false, videos: [] });
+    expect(parseTikTokEmbed("<html>Verify you are human</html>")).toBeNull();
+    expect(parseTikTokEmbed(`<script id="__FRONTITY_CONNECT_STATE__">not json</script>`)).toBeNull();
+  });
+
+  const now = new Date("2026-11-01T00:00:00Z");
+  const video = (hoursOld: number, views: number, pinned = false) => ({ id: "1", views, pinned, postedAt: new Date(now.getTime() - hoursOld * 3_600_000) });
+
+  it("leaves out pinned hits and waits for views to settle when there are enough videos", () => {
+    const old = [100, 200, 300, 400, 500].map((v, i) => video(100 + i, v));
+    const { typical, includesNewVideos } = typicalFromVideos([video(1000, 9_000_000, true), video(2, 1), ...old], now);
+    expect(typical.medianViews).toBe(300);
+    expect(typical.sampleSize).toBe(5);
+    expect(includesNewVideos).toBe(false);
+  });
+
+  it("falls back to videos 12+ hours old for busy posters, but not brand-new ones", () => {
+    const { typical, includesNewVideos } = typicalFromVideos([video(1, 0), video(14, 100), video(20, 200), video(30, 300)], now);
+    expect(typical.sampleSize).toBe(3);
+    expect(typical.medianViews).toBe(200);
+    expect(includesNewVideos).toBe(true);
+  });
+
+  it("gives no score when every video is brand new", () => {
+    expect(typicalFromVideos([video(1, 50), video(2, 60)], now).typical.sampleSize).toBe(0);
+  });
+
+  it("judges a views-only audience by views against followers", () => {
+    expect(assessFromViews({ followers: 10000, medianViews: 5000 })).toMatchObject({ verdict: "pass", flags: ["Scored from views only, without likes or comments"] });
+    expect(assessFromViews({ followers: 15600, medianViews: 130 }).verdict).toBe("review");
+  });
+});

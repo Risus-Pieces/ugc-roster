@@ -34,6 +34,8 @@ export type Ops = {
     dailySendLimit: number;
     /** Follow-ups sent this many days after the first email, while there's no reply. */
     followUpDays: number[];
+    /** Compose only picks creators whose median views reach this; sending below it needs an override. */
+    minTypicalViews: number;
   };
   arpuOverrideCents?: number;
 };
@@ -68,7 +70,7 @@ export const DEFAULT_OPS: Ops = {
   testFormats: ["Street interview", "Tier list", "Duet / stitch reaction", "Expectation vs reality", "Silent tutorial with captions"],
   decisionMinPosts: 20,
   surveyOptions: ["TikTok (no specific creator)", "Instagram", "YouTube", "App Store search", "Friend or family", "Other"],
-  outreach: { dailySendLimit: 40, followUpDays: [4, 9] },
+  outreach: { dailySendLimit: 40, followUpDays: [4, 9], minTypicalViews: 3000 },
 };
 
 async function getSetting<T>(key: string, fallback: T): Promise<T> {
@@ -82,5 +84,8 @@ async function putSetting(key: string, value: unknown) {
 
 export const getBrand = () => getSetting<Brand>("brand", DEFAULT_BRAND);
 export const saveBrand = (b: Brand) => putSetting("brand", b);
-export const getOps = () => getSetting<Ops>("ops", DEFAULT_OPS);
+export async function getOps() {
+  const ops = await getSetting<Ops>("ops", DEFAULT_OPS);
+  return { ...ops, outreach: { ...DEFAULT_OPS.outreach, ...ops.outreach } }; // saved settings can predate a new outreach field
+}
 export const saveOps = (o: Ops) => putSetting("ops", o);

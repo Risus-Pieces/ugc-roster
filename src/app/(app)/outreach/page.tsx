@@ -4,7 +4,8 @@ import { and, asc, desc, eq, inArray, isNotNull, ne, sql } from "drizzle-orm";
 import { db, calls, campaigns, creatorAccounts, creators, messages } from "@/db";
 import { Card, Empty, Field, Grid, Notice, PageHeader, StageBadge, Stat, Table, Tabs, Td, btn, btnSm, cx, input, label } from "@/components/ui";
 import { ActionForm, SubmitButton } from "@/components/client";
-import { coldEmailsSentToday, followUpsDue, outreachMode } from "@/lib/services/outreach";
+import { coldEmailsOn, followUpsDue, outreachMode } from "@/lib/services/outreach";
+import { centralLabel, viewsBarStatus } from "@/lib/engines/outreach";
 import { latestScores } from "@/lib/services/common";
 import { foodFitFor } from "@/lib/services/food-fit";
 import { getBrand, getOps } from "@/lib/settings";
@@ -39,7 +40,7 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
   const [sentCount, due, sentToday, ops] = await Promise.all([
     db.$count(messages, and(eq(messages.direction, "out"), inArray(messages.status, ["sent", "simulated", "failed"]))),
     followUpsDue(),
-    coldEmailsSentToday(),
+    coldEmailsOn(),
     getOps(),
   ]);
 
@@ -82,10 +83,10 @@ export default async function OutreachPage({ searchParams }: { searchParams: Sea
           <span className="num">
             {sentToday}/{ops.outreach.dailySendLimit}
           </span>{" "}
-          cold emails sent today. Every opener and follow-up gets a footer with your mailing address and an opt-out line, and creators who said no are never emailed again.
+          cold emails sent or scheduled today. They go out 2-5 minutes apart, 9am-6pm Central. Every opener and follow-up gets a footer with your mailing address and an opt-out line, and creators who said no are never emailed again.
         </p>
       )}
-      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} next={Number(one(sp.next) ?? 0) || 0} showAll={one(sp.show) === "all"} leftToday={Math.max(0, ops.outreach.dailySendLimit - sentToday)} dailyLimit={ops.outreach.dailySendLimit} /> : <SentTab />}
+      {tab === "replies" ? <RepliesTab /> : tab === "followups" ? <FollowUpsTab due={due} days={ops.outreach.followUpDays} /> : tab === "compose" ? <ComposeTab pick={Number(one(sp.pick) ?? 0) || 0} next={Number(one(sp.next) ?? 0) || 0} showAll={one(sp.show) === "all"} showBelow={one(sp.below) === "1"} bar={ops.outreach.minTypicalViews} leftToday={Math.max(0, ops.outreach.dailySendLimit - sentToday)} dailyLimit={ops.outreach.dailySendLimit} /> : <SentTab />}
     </>
   );
 }
@@ -279,16 +280,18 @@ async function RepliesTab() {
 // ─── Compose ────────────────────────────────────────────────────────────────
 
 /**
- * `pick`: tick the top N real audiences. `next`: tick the next N in the list, scored or not. Both only
- * tick food creators. Creators whose bio says they post about something else are hidden unless `showAll`.
+ * `pick`: tick the top N real audiences. `next`: tick the next N in the list. Both only tick food creators
+ * at or above the views bar. Non-food creators are hidden unless `showAll`; creators below the bar or
+ * without a score are hidden unless `showBelow`.
  */
-async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick: number; next: number; showAll: boolean; leftToday: number; dailyLimit: number }) {
+async function ComposeTab({ pick, next, showAll, showBelow, bar, leftToday, dailyLimit }: { pick: number; next: number; showAll: boolean; showBelow: boolean; bar: number; leftToday: number; dailyLimit: number }) {
   const [prospects, touched, draftRows, camps] = await Promise.all([
     db
       .select()
       .from(creators)
       .where(and(eq(creators.stage, "prospect"), isNotNull(creators.email))),
-    db.selectDistinct({ creatorId: messages.creatorId }).from(messages).where(eq(messages.direction, "out")),
+    // A failed send never reached them, so they're still fresh.
+    db.selectDistinct({ creatorId: messages.creatorId }).from(messages).where(and(eq(messages.direction, "out"), ne(messages.status, "failed"))),
     db
       .select()
       .from(messages)
@@ -303,35 +306,36 @@ async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick
   const [scores, accts, draftCreators] = ids.length
     ? await Promise.all([
         latestScores(ids),
-        db.select({ creatorId: creatorAccounts.creatorId, platform: creatorAccounts.platform, handle: creatorAccounts.handle }).from(creatorAccounts).where(inArray(creatorAccounts.creatorId, ids)),
+        db.select({ creatorId: creatorAccounts.creatorId, platform: creatorAccounts.platform, handle: creatorAccounts.handle, viewsNote: creatorAccounts.viewsNote }).from(creatorAccounts).where(inArray(creatorAccounts.creatorId, ids)),
         draftCreatorIds.length ? db.select().from(creators).where(inArray(creators.id, draftCreatorIds)) : Promise.resolve([]),
       ])
     : [new Map(), [], []];
   const acctBy = groupBy(accts, (a) => a.creatorId);
   const draftCreatorBy = new Map(draftCreators.map((c) => [c.id, c]));
   const fits = await foodFitFor(fresh);
-  const FIT_ORDER = { food: 0, unknown: 1, not_food: 2 } as const;
   const fitOf = (id: string) => fits.get(id)?.fit ?? "unknown";
-  const sorted = [...fresh].sort((a, b) => FIT_ORDER[fitOf(a.id)] - FIT_ORDER[fitOf(b.id)] || (scores.get(b.id)?.medianViews ?? -1) - (scores.get(a.id)?.medianViews ?? -1));
+  const barOf = (id: string) => viewsBarStatus(scores.get(id), bar);
+  const typical = (id: string) => (barOf(id) === "unscored" ? -1 : scores.get(id)!.medianViews);
+  const sorted = [...fresh].sort((a, b) => typical(b.id) - typical(a.id));
   const notFood = sorted.filter((c) => fitOf(c.id) === "not_food").length;
-  const unsure = sorted.filter((c) => fitOf(c.id) === "unknown").length;
-  const ranked = showAll ? sorted : sorted.filter((c) => fitOf(c.id) !== "not_food");
-  const food = ranked.filter((c) => fitOf(c.id) === "food");
-  const preselected = new Set(
-    next > 0
-      ? food.slice(0, next).map((c) => c.id)
-      : food
-          .filter((c) => scores.get(c.id)?.authenticityVerdict === "pass")
-          .slice(0, pick)
-          .map((c) => c.id),
-  );
+  const offBar = sorted.filter((c) => fitOf(c.id) !== "not_food" && barOf(c.id) !== "above").length;
+  const ranked = sorted.filter((c) => (showAll || fitOf(c.id) !== "not_food") && (showBelow || barOf(c.id) === "above"));
+  const pickable = ranked.filter((c) => fitOf(c.id) === "food" && barOf(c.id) === "above");
+  const realAudiences = pickable.filter((c) => scores.get(c.id)?.authenticityVerdict === "pass");
+  const preselected = new Set((next > 0 ? pickable.slice(0, next) : realAudiences.slice(0, pick)).map((c) => c.id));
+  const composeHref = (o: { show?: boolean; below?: boolean; tick?: string } = {}) => {
+    const q = new URLSearchParams({ tab: "compose" });
+    if (o.show ?? showAll) q.set("show", "all");
+    if (o.below ?? showBelow) q.set("below", "1");
+    return `/outreach?${q}${o.tick ? `&${o.tick}` : ""}`;
+  };
   // "Write openers" handles 25 at a time; default to what's left of today's sending limit.
   const batch = Math.min(25, leftToday > 0 ? leftToday : dailyLimit);
 
   return (
     <div className="space-y-4">
-      <Card title="Pick prospects" action={<span className="num text-[13px] text-muted">{food.length} food creators · {unsure} not sure</span>} flush>
-        {ranked.length === 0 ? (
+      <Card title="Pick prospects" action={<span className="num text-[13px] text-muted">{pickable.length} food creator{pickable.length === 1 ? "" : "s"} at or above {bar.toLocaleString("en-US")} · {offBar} below or unscored</span>} flush>
+        {fresh.length === 0 ? (
           <div className="p-4">
             <Empty
               title="Everyone with an email has been contacted"
@@ -345,30 +349,40 @@ async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick
             </Empty>
           </div>
         ) : (
-          <TopMessageForm action={writeOpenersAction} key={`pick-${pick}-${next}-${showAll}`}>
+          <TopMessageForm action={writeOpenersAction} key={`pick-${pick}-${next}-${showAll}-${showBelow}`}>
             <div className="flex flex-wrap items-center gap-2 border-b border-line px-4 py-2">
-              <Link href={`/outreach?tab=compose&next=${batch}`} scroll={false} className={cx(btn, btnSm)}>
+              <Link href={composeHref({ tick: `next=${batch}` })} scroll={false} className={cx(btn, btnSm)}>
                 Tick next {batch}
               </Link>
-              <Link href="/outreach?tab=compose&pick=10" scroll={false} className={cx(btn, btnSm)}>
-                Tick top 10 real audiences
-              </Link>
+              {realAudiences.length > 0 && (
+                <Link href={composeHref({ tick: "pick=10" })} scroll={false} className={cx(btn, btnSm)}>
+                  Tick top 10 real audiences
+                </Link>
+              )}
               {(pick > 0 || next > 0) && (
-                <Link href="/outreach?tab=compose" scroll={false} className={cx(btn, btnSm)}>
+                <Link href={composeHref()} scroll={false} className={cx(btn, btnSm)}>
                   Clear ticks
                 </Link>
               )}
-              <span className="text-[13px] text-muted">Food creators first, then ones whose bio doesn&apos;t say; each sorted by median views. The tick buttons only pick food creators.</span>
+              <span className="text-[13px] text-muted">Highest typical views first. The tick buttons only pick food creators at or above the bar.</span>
+              {offBar > 0 && (
+                <Link href={composeHref({ below: !showBelow })} scroll={false} className="text-[13px] text-info hover:underline">
+                  {showBelow ? `Hide the ${offBar} below the bar or unscored` : `Show ${offBar} below the bar or unscored`}
+                </Link>
+              )}
               {notFood > 0 && (
-                <Link href={showAll ? "/outreach?tab=compose" : "/outreach?tab=compose&show=all"} scroll={false} className="text-[13px] text-info hover:underline">
+                <Link href={composeHref({ show: !showAll })} scroll={false} className="text-[13px] text-info hover:underline">
                   {showAll ? `Hide the ${notFood} non-food creators` : `Show ${notFood} hidden non-food creators`}
                 </Link>
               )}
             </div>
+            {ranked.length === 0 && <p className="p-4 text-ink-2">No creators at or above {bar.toLocaleString("en-US")} typical views yet. Run pnpm check-views on your computer to score them, or lower the bar in Settings → Operations.</p>}
             <div className="max-h-[440px] overflow-y-auto">
-              <Table head={["", "Creator", "Food?", "Handle", { label: "Median views", align: "right" }, { label: "Worst 5 avg", align: "right" }, "Audience", "Email"]}>
+              <Table head={["", "Creator", "Food?", "Handle", { label: "Typical views", align: "right" }, { label: "Worst 5 avg", align: "right" }, "Audience", "Email"]}>
                 {ranked.map((c) => {
                   const s = scores.get(c.id);
+                  const status = barOf(c.id);
+                  const note = (acctBy.get(c.id) ?? []).find((a) => a.viewsNote)?.viewsNote;
                   return (
                     <tr key={c.id} className="align-top">
                       <Td>
@@ -385,11 +399,11 @@ async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick
                       <Td>
                         <Handles accounts={(acctBy.get(c.id) ?? []).slice(0, 2)} />
                       </Td>
-                      <Td right mono className="font-medium">
-                        {s ? compact(s.medianViews) : "—"}
+                      <Td right mono className={cx("font-medium", status === "below" && "text-loss")}>
+                        {status === "unscored" ? <span className="whitespace-nowrap text-[13px] font-normal text-muted">{note ?? "not checked"}</span> : compact(s!.medianViews)}
                       </Td>
                       <Td right mono>
-                        {s && s.sampleSize > 0 ? compact(s.worst5AvgViews) : "—"}
+                        {status === "unscored" ? "—" : compact(s!.worst5AvgViews)}
                       </Td>
                       <Td>
                         <Authenticity score={s} />
@@ -429,8 +443,8 @@ async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick
           ) : (
             <>
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-line px-4 py-2">
-                <span className="text-[13px] text-muted">Edit any draft, then send it on its own or send them all. Edits are kept either way.</span>
-                <SubmitButton variant="primary" name="intent" value="send-all" pendingText="Sending…">
+                <span className="text-[13px] text-muted">Edit any draft, then schedule it on its own or schedule them all. Edits are kept either way. Each one goes out 2-5 minutes after the last, 9am-6pm Central.</span>
+                <SubmitButton variant="primary" name="intent" value="send-all" pendingText="Scheduling…">
                   Send all {draftRows.length}
                 </SubmitButton>
               </div>
@@ -438,6 +452,7 @@ async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick
                 {draftRows.map((d) => {
                   const c = draftCreatorBy.get(d.creatorId);
                   const s = scores.get(d.creatorId);
+                  const status = viewsBarStatus(s, bar);
                   return (
                     <li key={d.id} className="space-y-2 px-4 py-3">
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[13px]">
@@ -445,13 +460,19 @@ async function ComposeTab({ pick, next, showAll, leftToday, dailyLimit }: { pick
                           {c?.name ?? "Unknown"}
                         </Link>
                         <span className="text-ink-2">{c?.email}</span>
-                        {s && <span className="num text-muted">median {compact(s.medianViews)}</span>}
+                        {status !== "unscored" && <span className={cx("num", status === "below" ? "text-loss" : "text-muted")}>typical {compact(s!.medianViews)}</span>}
                         <span className="num ml-auto text-muted">drafted {relative(d.createdAt)}</span>
                       </div>
                       <input name={`subject:${d.id}`} defaultValue={d.subject ?? ""} className={cx(input, "font-medium")} aria-label="Subject" />
                       <textarea name={`body:${d.id}`} defaultValue={d.body} rows={7} className={input} aria-label="Body" />
+                      {status === "below" && (
+                        <label className="flex items-center gap-2 text-[14px] text-loss">
+                          <input type="checkbox" name={`override:${d.id}`} />
+                          Under your {bar.toLocaleString("en-US")} views bar. Send anyway
+                        </label>
+                      )}
                       <div className="flex gap-2">
-                        <SubmitButton name="intent" value={`send:${d.id}`} pendingText="Sending…" className={btnSm}>
+                        <SubmitButton name="intent" value={`send:${d.id}`} pendingText="Scheduling…" className={btnSm}>
                           Send
                         </SubmitButton>
                         <button type="submit" name="intent" value={`discard:${d.id}`} className={cx(btn, btnSm, "text-muted")}>
@@ -480,6 +501,7 @@ async function SentTab() {
       subject: messages.subject,
       body: messages.body,
       status: messages.status,
+      error: messages.error,
       sentAt: messages.sentAt,
       createdAt: messages.createdAt,
       name: creators.name,
@@ -500,16 +522,18 @@ async function SentTab() {
   const inBy = groupBy(inbound, (m) => m.creatorId);
 
   if (!sent.length) return <Empty title="Nothing sent yet">Write openers in Compose and send them.</Empty>;
+  const now = requestTime();
   return (
     <Card flush>
-      <Table head={["Sent", "Creator", "Subject", "Status", "Reply"]}>
+      <Table head={["When", "Creator", "Subject", "Status", "Reply"]}>
         {sent.map((m) => {
           const at = m.sentAt ?? m.createdAt;
           const gotReply = (inBy.get(m.creatorId) ?? []).some((r) => r.createdAt.getTime() >= at.getTime());
+          const scheduled = m.status !== "failed" && at.getTime() > now;
           return (
-            <tr key={m.id}>
+            <tr key={m.id} className="align-top">
               <Td mono className="whitespace-nowrap text-ink-2">
-                {dateTime(at)}
+                {scheduled ? centralLabel(at) : dateTime(at)}
               </Td>
               <Td>
                 <Link href={`/creators/${m.creatorId}`} className="whitespace-nowrap font-medium hover:underline">
@@ -522,7 +546,8 @@ async function SentTab() {
                 </span>
               </Td>
               <Td>
-                <MsgStatusBadge status={m.status} />
+                <MsgStatusBadge status={scheduled ? "scheduled" : m.status} />
+                {m.status === "failed" && <p className="mt-1 max-w-[280px] text-[13px] text-loss">{m.error ?? "Reason not saved"}</p>}
               </Td>
               <Td>{gotReply ? <span className="text-ink">replied</span> : <span className="text-muted">—</span>}</Td>
             </tr>

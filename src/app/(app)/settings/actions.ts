@@ -5,6 +5,8 @@ import type { ActionResult } from "@/components/client";
 import { getOps, saveBrand, saveOps, type Brand, type Ops } from "@/lib/settings";
 import { importGooglePlayCsv } from "@/lib/integrations/revenue";
 import { checkIntegrations, type Check } from "@/lib/integrations/health";
+import { parseEmailList } from "@/lib/engines/outreach";
+import { sendTestOpener } from "@/lib/services/outreach";
 
 const str = (fd: FormData, k: string) => String(fd.get(k) ?? "").trim();
 const lines = (fd: FormData, k: string) =>
@@ -70,6 +72,21 @@ export async function saveBrandAction(_: ActionResult, fd: FormData): Promise<Ac
   }
 }
 
+const MAX_TEST_ADDRESSES = 10;
+
+/** Sends what's in the First email boxes, saved or not, so a change can be tried before saving it. */
+export async function sendTestEmailAction(p: { addresses: string; subject: string; body: string }) {
+  const { valid, invalid } = parseEmailList(p.addresses);
+  if (invalid.length) return { message: `Not an email address: ${invalid.join(", ")}`, results: [] };
+  if (!valid.length) return { message: "Enter at least one email address.", results: [] };
+  if (valid.length > MAX_TEST_ADDRESSES) return { message: `Send to ${MAX_TEST_ADDRESSES} addresses or fewer at a time.`, results: [] };
+  try {
+    return { results: await sendTestOpener(valid, { subject: p.subject, body: p.body }) };
+  } catch (e) {
+    return { message: e instanceof Error ? e.message : String(e), results: [] };
+  }
+}
+
 export async function saveOpsAction(_: ActionResult, fd: FormData): Promise<ActionResult> {
   try {
     const current = await getOps();
@@ -87,6 +104,7 @@ export async function saveOpsAction(_: ActionResult, fd: FormData): Promise<Acti
           .split(/[,\s]+/)
           .filter(Boolean)
           .map(Number),
+        minTypicalViews: num(fd, "minTypicalViews"),
       },
       testShare: num(fd, "testShare") / 100,
       testFormats: lines(fd, "testFormats"),
@@ -104,6 +122,7 @@ export async function saveOpsAction(_: ActionResult, fd: FormData): Promise<Acti
       o.outreach.followUpDays.length <= 3 && o.outreach.followUpDays.every((d, i, a) => Number.isInteger(d) && d >= 1 && d <= 60 && (i === 0 || d > a[i - 1])),
       "Follow-up days must be up to 3 increasing whole numbers, like 4, 9. Leave blank for no follow-ups.",
     );
+    need(Number.isInteger(o.outreach.minTypicalViews) && o.outreach.minTypicalViews >= 0, "Minimum typical views must be a whole number. Use 0 for no bar.");
     need(o.surveyOptions.length > 0, `Add at least one generic survey answer, such as "Other".`);
     await saveOps(o);
     revalidatePath("/", "layout");

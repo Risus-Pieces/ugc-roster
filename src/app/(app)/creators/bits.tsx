@@ -15,7 +15,7 @@ export const kfmt = (n: number) => (n >= 1000 ? `${+(n / 1000).toFixed(1)}K` : `
 const CLASS_TONE: Record<string, Tone> = { interested: "profit", rates: "tally", not_interested: "loss", other: "neutral" };
 export const ClassBadge = ({ c }: { c: string | null | undefined }) => (c ? <Badge tone={CLASS_TONE[c] ?? "neutral"}>{c.replace("_", " ")}</Badge> : null);
 
-const STATUS_TONE: Record<string, Tone> = { draft: "neutral", sent: "profit", simulated: "info", failed: "loss", received: "tally", handled: "neutral" };
+const STATUS_TONE: Record<string, Tone> = { draft: "neutral", scheduled: "info", sent: "profit", simulated: "info", failed: "loss", received: "tally", handled: "neutral" };
 export const MsgStatusBadge = ({ status }: { status: string }) => <Badge tone={STATUS_TONE[status] ?? "neutral"}>{status}</Badge>;
 
 export function Handles({ accounts }: { accounts: { platform: string; handle: string }[] }) {

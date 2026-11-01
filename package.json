@@ -12,6 +12,7 @@
     "db:reset": "tsx --env-file-if-exists=.env.local --conditions=react-server src/db/reset.ts && pnpm db:seed --force",
     "import-csv": "tsx --env-file-if-exists=.env.local --conditions=react-server src/scripts/import-csv.ts",
     "find-emails": "tsx --env-file-if-exists=.env.local --conditions=react-server src/scripts/find-emails.ts",
+    "check-views": "tsx --env-file-if-exists=.env.local --conditions=react-server src/scripts/check-views.ts",
     "test": "vitest run",
     "typecheck": "tsc --noEmit"
   },

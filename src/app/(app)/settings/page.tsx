@@ -15,6 +15,7 @@ import { day } from "@/lib/format";
 import { saveBrandAction, saveOpsAction, importGooglePlayAction } from "./actions";
 import { publicOrigin } from "./origin";
 import { CheckConnections } from "./check-connections";
+import { TestEmail } from "./test-email";
 
 export const metadata = { title: "Settings & integrations" };
 
@@ -107,6 +108,7 @@ async function BrandForm() {
           <Field label="Email" hint="Sent as written, with the opt-out footer added below. {name} becomes the creator's first name (or @handle when the name on file is a channel name) and {handle} their handle, in the subject too. If you change pay in Rate cards, change it here too.">
             <textarea name="openerBody" defaultValue={b.openerBody} className={area} rows={12} required />
           </Field>
+          <TestEmail />
         </div>
       </Card>
 
@@ -172,6 +174,9 @@ async function OpsForm() {
           </Field>
           <Field label="Follow-up days" hint="Days after the first email, comma-separated. Stops as soon as they reply. Example: 4, 9">
             <input name="followUpDays" defaultValue={o.outreach.followUpDays.join(", ")} className={cx(input, "num")} />
+          </Field>
+          <Field label="Minimum typical views" hint="Typical means median views, from pnpm check-views. Compose only picks creators at or above this, and sending below it needs an override.">
+            <input name="minTypicalViews" defaultValue={o.outreach.minTypicalViews} inputMode="numeric" className={cx(input, "num")} />
           </Field>
         </div>
       </Card>

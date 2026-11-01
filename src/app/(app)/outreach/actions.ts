@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { and, eq } from "drizzle-orm";
 import type { ActionResult } from "@/components/client";
 import { db, messages } from "@/db";
+import { centralLabel } from "@/lib/engines/outreach";
 import { bookCall, discardDraft, draftFollowUps, draftOpener, recordReply, sendDraftReply, sendMessage } from "@/lib/services/outreach";
 
 const fail = (e: unknown): ActionResult => ({ ok: false, message: e instanceof Error ? e.message : String(e) });
@@ -97,6 +98,7 @@ export async function draftsAction(_: ActionResult, fd: FormData): Promise<Actio
   try {
     const intent = str(fd, "intent");
     const [verb, id] = intent.split(":");
+    const overrideBar = (mid: string) => ({ overrideBar: fd.get(`override:${mid}`) === "on" });
     const edits = (mid: string) => ({ subject: str(fd, `subject:${mid}`) || undefined, body: str(fd, `body:${mid}`) || undefined });
 
     if (verb === "discard" && id) {
@@ -105,29 +107,30 @@ export async function draftsAction(_: ActionResult, fd: FormData): Promise<Actio
       return { ok: true, message: "Draft discarded" };
     }
     if (verb === "send" && id) {
-      const res = await sendMessage(id, edits(id));
+      const res = await sendMessage(id, edits(id), overrideBar(id));
       revalidatePath("/", "layout");
-      return { ok: true, message: `Sent · ${sentWord(res.status)}` };
+      return { ok: true, message: res.status === "simulated" ? "Simulated (email not configured)" : `Scheduled for ${centralLabel(res.scheduledFor)}` };
     }
     if (verb === "send-all") {
       const drafts = await db
         .select({ id: messages.id })
         .from(messages)
         .where(and(eq(messages.direction, "out"), eq(messages.status, "draft")));
-      let sent = 0;
+      const slots: Date[] = [];
       const errors: string[] = [];
       let lastStatus = "sent";
       for (const d of drafts) {
         try {
-          const res = await sendMessage(d.id, edits(d.id));
+          const res = await sendMessage(d.id, edits(d.id), overrideBar(d.id));
           lastStatus = res.status;
-          sent++;
+          slots.push(res.scheduledFor);
         } catch (e) {
           errors.push(e instanceof Error ? e.message : String(e));
         }
       }
       revalidatePath("/", "layout");
-      return { ok: sent > 0, message: `${sent} sent${lastStatus === "simulated" ? " (simulated — email not configured)" : ""}${errors.length ? ` · ${errors.length} failed: ${errors[0]}` : ""}` };
+      const when = slots.length ? (lastStatus === "simulated" ? " (simulated, email not configured)" : `, ${centralLabel(slots[0])} to ${centralLabel(slots[slots.length - 1])}`) : "";
+      return { ok: slots.length > 0, message: `${slots.length} scheduled${when}${errors.length ? ` · ${errors.length} not sent: ${errors[0]}` : ""}` };
     }
     return { ok: false, message: "Nothing to do" };
   } catch (e) {

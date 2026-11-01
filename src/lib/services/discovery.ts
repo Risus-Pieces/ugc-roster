@@ -128,7 +128,8 @@ export async function scoreCreator(creatorId: string) {
       .where(and(eq(posts.accountId, acct.id), inArray(posts.source, ["prospect", "roster"]), eq(posts.isCampaignPost, false)))
       .orderBy(desc(posts.postedAt))
       .limit(40);
-    if (!ps.length) continue;
+    // Views-only posts from check-views have no likes or comments; they'd look like a dead audience here.
+    if (!ps.some((p) => p.likes + p.comments + p.shares > 0)) continue;
     const samples = ps.map((p) => ({ views: p.views, likes: p.likes, comments: p.comments, shares: p.shares, saves: p.saves, postedAt: p.postedAt, caption: p.caption, sampleComments: p.sampleComments }));
     const t = typicalViews(samples);
     const auth = assessAuthenticity({ followers: acct.followers, posts: samples.slice(0, 30) });

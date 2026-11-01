@@ -189,3 +189,9 @@ export function assessFromAggregates(p: { followers: number | null; avgViews: nu
     engagementRate: p.engagementRate ?? 0,
   };
 }
+
+/** The TikTok embed shows views but no likes or comments, so views against followers is all there is to judge. */
+export function assessFromViews(p: { followers: number | null; medianViews: number }): AuthenticityResult {
+  const a = assessFromAggregates({ followers: p.followers, avgViews: p.medianViews, engagementRate: null, fakeFollowersPct: null });
+  return { ...a, flags: ["Scored from views only, without likes or comments", ...a.flags.slice(1)] };
+}

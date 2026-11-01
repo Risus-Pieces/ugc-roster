@@ -127,3 +127,80 @@ export function followUpEmail(brand: Sender, step: number, shortOffer: string, t
     ? `Hey ${name}! Popping back in case this got buried. It's ${shortOffer}, and the drink's on us. Want me to send over the details?\n\n${sig}`
     : `Hey ${name}, last note from me! If a spicy collab isn't your thing right now, totally fine. If it is, just reply "yes" and I'll send everything over.\n\n${sig}`;
 }
+
+// ─── Send window ────────────────────────────────────────────────────────────
+
+/** Cold emails go out one at a time, a few random minutes apart, during the working day in Central time. */
+export const SEND_WINDOW = { timeZone: "America/Chicago", startHour: 9, endHour: 18, minGapMinutes: 2, maxGapMinutes: 5 };
+
+function centralParts(d: Date) {
+  const f = new Intl.DateTimeFormat("en-US", { timeZone: SEND_WINDOW.timeZone, hourCycle: "h23", year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric", second: "numeric" });
+  const p = Object.fromEntries(f.formatToParts(d).map((x) => [x.type, Number(x.value)]));
+  return { year: p.year, month: p.month, day: p.day, hour: p.hour, minute: p.minute, second: p.second };
+}
+
+/** The moment a Central wall clock reads this hour. `day` can overflow into the next month. */
+function centralTime(year: number, month: number, day: number, hour: number) {
+  const wall = Date.UTC(year, month - 1, day, hour);
+  let at = wall;
+  // Measure the zone's offset at the answer, not the guess: they differ across a clock change.
+  for (let i = 0; i < 2; i++) {
+    const c = centralParts(new Date(at));
+    at = wall - (Date.UTC(c.year, c.month - 1, c.day, c.hour, c.minute, c.second) - at);
+  }
+  return new Date(at);
+}
+
+/** The Central calendar day containing `d`, which is what the daily send limit counts. */
+export function sendDayBounds(d: Date) {
+  const c = centralParts(d);
+  return { start: centralTime(c.year, c.month, c.day, 0), end: centralTime(c.year, c.month, c.day + 1, 0) };
+}
+
+/** When the next cold email should go out: 2-5 random minutes after the last one, inside the window. */
+export function nextSendSlot(p: { last: Date | null; now: Date; random?: () => number }) {
+  const random = p.random ?? Math.random;
+  const gap = () => (SEND_WINDOW.minGapMinutes + random() * (SEND_WINDOW.maxGapMinutes - SEND_WINDOW.minGapMinutes)) * 60_000;
+  const slot = Math.max(p.now.getTime(), p.last?.getTime() ?? 0) + gap();
+  const c = centralParts(new Date(slot));
+  const open = centralTime(c.year, c.month, c.day, SEND_WINDOW.startHour).getTime();
+  if (slot < open) return new Date(open + gap());
+  if (slot < centralTime(c.year, c.month, c.day, SEND_WINDOW.endHour).getTime()) return new Date(slot);
+  return new Date(centralTime(c.year, c.month, c.day + 1, SEND_WINDOW.startHour).getTime() + gap());
+}
+
+/** "Mon 9:14 AM Central" */
+export const centralLabel = (d: Date) => `${new Intl.DateTimeFormat("en-US", { timeZone: SEND_WINDOW.timeZone, weekday: "short", hour: "numeric", minute: "2-digit" }).format(d)} Central`;
+
+const RATE_LIMIT_ATTEMPTS = 4;
+
+/**
+ * How long to wait before retrying a rejected send, or null not to retry. Only the per-second rate limit
+ * clears by waiting; a used-up daily or monthly quota comes back as a 429 too and would just fail again.
+ */
+export function rateLimitWaitMs(p: { status: number; errorName?: string; retryAfter?: string | null; attempt: number }) {
+  if (p.status !== 429 || p.attempt >= RATE_LIMIT_ATTEMPTS || /quota/i.test(p.errorName ?? "")) return null;
+  const seconds = Number(p.retryAfter);
+  return Math.min(seconds > 0 ? seconds * 1000 : 2 ** (p.attempt - 1) * 1000, 10_000);
+}
+
+// ─── Test emails ────────────────────────────────────────────────────────────
+
+const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/** Addresses typed into a box, split on commas, semicolons, spaces or new lines. */
+export function parseEmailList(text: string) {
+  const parts = [...new Set(text.split(/[\s,;]+/).map((s) => s.trim().toLowerCase()).filter(Boolean))];
+  return { valid: parts.filter((e) => EMAIL_SHAPE.test(e)), invalid: parts.filter((e) => !EMAIL_SHAPE.test(e)) };
+}
+
+// ─── Views bar ──────────────────────────────────────────────────────────────
+
+/**
+ * Where a creator sits against the "minimum typical views" bar. Typical means the median of real posts,
+ * so a score with no posts behind it (imported averages) counts as unscored.
+ */
+export function viewsBarStatus(score: { sampleSize: number; medianViews: number } | null | undefined, bar: number) {
+  if (!score || score.sampleSize === 0) return "unscored" as const;
+  return score.medianViews >= bar ? ("above" as const) : ("below" as const);
+}

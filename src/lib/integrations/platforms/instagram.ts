@@ -93,24 +93,47 @@ const FB_GRAPH = "https://graph.facebook.com/v26.0";
 /** Instagram's usage limit was hit (Graph error codes 4, 17, 32, 613, 80002). Try again later. */
 export class InstagramRateLimit extends Error {}
 
+/** The token behind INSTAGRAM_GRAPH_TOKEN expired or was revoked (Graph error code 190). */
+export class InstagramTokenExpired extends Error {}
+
+type DiscoveryAuth = { token: string; igUserId: string };
+
 /**
  * Business Discovery (Instagram API with Facebook Login): public fields of another professional
  * account by username, looked up through your own professional account. Needs a Facebook user token
  * with instagram_basic, instagram_manage_insights and pages_read_engagement.
  */
-export async function businessDiscovery(username: string, auth: { token: string; igUserId: string }) {
-  const fields = `business_discovery.username(${username}){username,biography,website,followers_count}`;
+async function lookUp<T>(username: string, wanted: string, auth: DiscoveryAuth): Promise<{ found: false } | { found: true; account: T }> {
+  const fields = `business_discovery.username(${username}){${wanted}}`;
   const res = await fetch(`${FB_GRAPH}/${auth.igUserId}?fields=${encodeURIComponent(fields)}&access_token=${auth.token}`, { signal: AbortSignal.timeout(20_000) });
   const j = await res.json();
   if (j.error) {
     const { code, error_subcode: subcode, message } = j.error as { code: number; error_subcode?: number; message: string };
     if ([4, 17, 32, 613, 80002].includes(code)) throw new InstagramRateLimit(message);
+    if (code === 190) throw new InstagramTokenExpired(message);
     // Not found, a personal (non-professional) account, or age-gated
-    if (code === 110 || subcode === 2207013) return { found: false as const };
+    if (code === 110 || subcode === 2207013) return { found: false };
     throw new Error(`Instagram Business Discovery failed for @${username}: ${message}`);
   }
-  const u = j.business_discovery as { biography?: string; website?: string; followers_count?: number };
+  return { found: true, account: j.business_discovery as T };
+}
+
+export async function businessDiscovery(username: string, auth: DiscoveryAuth) {
+  const r = await lookUp<{ biography?: string; website?: string; followers_count?: number }>(username, "username,biography,website,followers_count", auth);
+  if (!r.found) return { found: false as const };
+  const u = r.account;
   return { found: true as const, bio: u.biography ?? "", website: u.website || null, followers: u.followers_count ?? null };
+}
+
+type DiscoveryMedia = { id: string; permalink?: string; timestamp: string; media_type?: string; media_product_type?: string; like_count?: number; comments_count?: number; view_count?: number };
+
+/** A professional account's recent videos that report a view count. view_count mixes paid and organic views. */
+export async function businessDiscoveryVideos(username: string, auth: DiscoveryAuth) {
+  const r = await lookUp<{ followers_count?: number; media?: { data?: DiscoveryMedia[] } }>(username, "followers_count,media.limit(30){id,permalink,timestamp,media_type,media_product_type,like_count,comments_count,view_count}", auth);
+  if (!r.found) return { found: false as const };
+  const media = r.account.media?.data ?? [];
+  const videos = media.filter((m) => (m.media_type === "VIDEO" || m.media_product_type === "REELS") && typeof m.view_count === "number");
+  return { found: true as const, followers: r.account.followers_count ?? null, videos };
 }
 
 /** The Instagram professional account linked to one of the token owner's Facebook Pages. */
