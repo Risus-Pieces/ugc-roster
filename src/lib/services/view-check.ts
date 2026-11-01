@@ -143,11 +143,14 @@ export async function checkInstagramViews(opts: CheckViewsOptions = {}): Promise
   if (!token) return { ...result, stopped: "INSTAGRAM_GRAPH_TOKEN is blank in .env.local, so Instagram wasn't checked. Nobody was marked." };
   const delay = opts.delayMs ?? 1500;
   try {
-    const igUserId = await instagramBusinessId(token);
-    if (!igUserId) return { ...result, stopped: "None of this token's Facebook Pages has a linked Instagram professional account." };
+    const igUserId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || (await instagramBusinessId(token));
+    if (!igUserId) return { ...result, stopped: "None of this token's Facebook Pages has a linked Instagram professional account. Set INSTAGRAM_BUSINESS_ID to your account's ID." };
     const all = await accountsToCheck("instagram", opts);
-    const scores = await latestScores(all.map((r) => r.creatorId));
-    const rows = all.filter((r) => !scores.get(r.creatorId)?.sampleSize);
+    const ids = all.map((r) => r.creatorId);
+    const [scores, tiktok] = await Promise.all([latestScores(ids), db.select({ creatorId: creatorAccounts.creatorId, viewsNote: creatorAccounts.viewsNote }).from(creatorAccounts).where(and(eq(creatorAccounts.platform, "tiktok"), inArray(creatorAccounts.creatorId, ids)))]);
+    // Creators with a TikTok get scored there; Instagram is for those without one, or whose TikTok had no data.
+    const coveredByTikTok = new Set(tiktok.filter((t) => !t.viewsNote).map((t) => t.creatorId));
+    const rows = all.filter((r) => !scores.get(r.creatorId)?.sampleSize && !coveredByTikTok.has(r.creatorId));
     say(`${rows.length} Instagram accounts to check`);
 
     for (const [i, row] of rows.entries()) {
