@@ -129,7 +129,7 @@ type DiscoveryMedia = { id: string; permalink?: string; timestamp: string; media
 
 /** A professional account's recent videos that report a view count. view_count mixes paid and organic views. */
 export async function businessDiscoveryVideos(username: string, auth: DiscoveryAuth) {
-  const r = await lookUp<{ followers_count?: number; media?: { data?: DiscoveryMedia[] } }>(username, "followers_count,media.limit(30){id,permalink,timestamp,media_type,media_product_type,like_count,comments_count,view_count}", auth);
+  const r = await lookUp<{ followers_count?: number; media?: { data?: DiscoveryMedia[] } }>(username, "followers_count,media.limit(15){id,permalink,timestamp,media_type,media_product_type,like_count,comments_count,view_count}", auth);
   if (!r.found) return { found: false as const };
   const media = r.account.media?.data ?? [];
   const videos = media.filter((m) => (m.media_type === "VIDEO" || m.media_product_type === "REELS") && typeof m.view_count === "number");

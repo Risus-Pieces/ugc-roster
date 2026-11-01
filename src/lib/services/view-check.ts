@@ -15,6 +15,10 @@ const DAY = 86_400_000;
 // The embed answers 429 at one request every few seconds, and now and then at 12-19 seconds. It clears within a minute or two.
 const TIKTOK_DELAY_MS = 18_000;
 const TOO_FAST_PAUSE_MS = 120_000;
+// Meta's limit for a one-user app is on processing time over a rolling hour, about 40 of these lookups.
+const INSTAGRAM_DELAY_MS = 60_000;
+const LIMIT_PAUSE_MS = 900_000;
+const MAX_LIMIT_WAITS = 4;
 
 export type CheckViewsOptions = { limit?: number; dryRun?: boolean; delayMs?: number; recheckDays?: number; handles?: string[]; includeNoEmail?: boolean; onProgress?: (line: string) => void };
 export type CheckViewsResult = { checked: number; scored: number; noData: number; stopped: string | null };
@@ -141,7 +145,7 @@ export async function checkInstagramViews(opts: CheckViewsOptions = {}): Promise
   const result: CheckViewsResult = { checked: 0, scored: 0, noData: 0, stopped: null };
   const token = process.env.INSTAGRAM_GRAPH_TOKEN?.trim();
   if (!token) return { ...result, stopped: "INSTAGRAM_GRAPH_TOKEN is blank in .env.local, so Instagram wasn't checked. Nobody was marked." };
-  const delay = opts.delayMs ?? 1500;
+  const delay = opts.delayMs ?? INSTAGRAM_DELAY_MS;
   try {
     const igUserId = process.env.INSTAGRAM_BUSINESS_ID?.trim() || (await instagramBusinessId(token));
     if (!igUserId) return { ...result, stopped: "None of this token's Facebook Pages has a linked Instagram professional account. Set INSTAGRAM_BUSINESS_ID to your account's ID." };
@@ -156,7 +160,16 @@ export async function checkInstagramViews(opts: CheckViewsOptions = {}): Promise
     for (const [i, row] of rows.entries()) {
       if (i > 0) await sleep(delay);
       const tag = `[${i + 1}/${rows.length}] @${row.handle}`;
-      const found = await businessDiscoveryVideos(row.handle, { token, igUserId });
+      let found: Awaited<ReturnType<typeof businessDiscoveryVideos>> | null = null;
+      for (let wait = 0; !found; wait++) {
+        try {
+          found = await businessDiscoveryVideos(row.handle, { token, igUserId });
+        } catch (e) {
+          if (!(e instanceof InstagramRateLimit) || wait >= MAX_LIMIT_WAITS) throw e;
+          say(`${tag}: Instagram's limit reached, waiting ${LIMIT_PAUSE_MS / 60_000} minutes`);
+          await sleep(LIMIT_PAUSE_MS);
+        }
+      }
       result.checked++;
       const samples = found.found ? found.videos.map((v) => ({ views: v.view_count!, likes: v.like_count ?? 0, comments: v.comments_count ?? 0, shares: 0, postedAt: new Date(v.timestamp) })) : [];
       const typical = typicalViews(samples);
@@ -176,7 +189,7 @@ export async function checkInstagramViews(opts: CheckViewsOptions = {}): Promise
       await markChecked(row.accountId, null, followers);
     }
   } catch (e) {
-    if (e instanceof InstagramRateLimit) result.stopped = "Instagram's hourly limit was reached. Run it again in an hour; it picks up where it left off.";
+    if (e instanceof InstagramRateLimit) result.stopped = "Instagram's limit didn't clear after an hour of waiting. Run it again later; it picks up where it left off.";
     else if (e instanceof InstagramTokenExpired) result.stopped = `INSTAGRAM_GRAPH_TOKEN has expired: ${e.message}`;
     else throw e;
   }
