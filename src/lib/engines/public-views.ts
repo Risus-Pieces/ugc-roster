@@ -7,6 +7,16 @@ import { typicalViews, type TypicalViews } from "./creator-score";
 export type EmbedVideo = { id: string; views: number; postedAt: Date; pinned: boolean };
 export type EmbedProfile = { found: boolean; privateAccount: boolean; followers: number | null; videos: EmbedVideo[] };
 
+const NETWORK_CODES = new Set(["ENOTFOUND", "EAI_AGAIN", "ECONNRESET", "ECONNREFUSED", "ETIMEDOUT", "ENETUNREACH", "EHOSTUNREACH", "EPIPE", "UND_ERR_CONNECT_TIMEOUT", "UND_ERR_SOCKET"]);
+
+/** Did the connection itself fail? fetch and the database wrap the real error, so it's checked down the chain of causes. */
+export function networkDropped(e: unknown): boolean {
+  for (let err = e; err instanceof Error; err = err.cause) {
+    if (err.name === "TimeoutError" || NETWORK_CODES.has((err as NodeJS.ErrnoException).code ?? "") || err.message.includes("Connection terminated")) return true;
+  }
+  return false;
+}
+
 /** TikTok video IDs start with the upload time: the top bits are Unix seconds. */
 export const postDateFromVideoId = (id: string) => new Date(Number(BigInt(id) >> BigInt(32)) * 1000);
 

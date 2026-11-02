@@ -92,7 +92,7 @@ export async function checkTikTokViews(opts: CheckViewsOptions = {}): Promise<Ch
     let profile: EmbedProfile | null = null;
     let status = 0;
     while (!profile) {
-      const page = await getPage(`https://www.tiktok.com/embed/@${encodeURIComponent(row.handle)}`).catch(() => ({ status: 0, html: "" }));
+      const page = await getPage(`https://www.tiktok.com/embed/@${encodeURIComponent(row.handle)}`);
       status = page.status;
       // The embed answers 400 for missing accounts, and getPage only keeps bodies of successful pages.
       profile = status === 400 ? { found: false, privateAccount: false, followers: null, videos: [] } : status === 200 ? parseTikTokEmbed(page.html) : null;
@@ -100,7 +100,7 @@ export async function checkTikTokViews(opts: CheckViewsOptions = {}): Promise<Ch
       failures++;
       say(`${tag}: no data (HTTP ${status})`);
       if (failures >= MAX_FAILURES_IN_A_ROW) break;
-      if (status === 429 || status === 0) await sleep(TOO_FAST_PAUSE_MS); // told to slow down, or the network dropped
+      if (status === 429) await sleep(TOO_FAST_PAUSE_MS); // told to slow down
       else break;
     }
     if (failures >= MAX_FAILURES_IN_A_ROW) {

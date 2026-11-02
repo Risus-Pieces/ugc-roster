@@ -701,7 +701,7 @@ describe("views bar", () => {
 });
 
 import { assessFromViews } from "./authenticity";
-import { parseTikTokEmbed, postDateFromVideoId, typicalFromVideos } from "./public-views";
+import { networkDropped, parseTikTokEmbed, postDateFromVideoId, typicalFromVideos } from "./public-views";
 describe("TikTok embed views", () => {
   const embed = (page: unknown) => `<html><script id="__FRONTITY_CONNECT_STATE__" type="application/json">${JSON.stringify({ source: { data: { "/embed/@x": page } } })}</script></html>`;
   const list = [
@@ -758,5 +758,22 @@ describe("TikTok embed views", () => {
   it("judges a views-only audience by views against followers", () => {
     expect(assessFromViews({ followers: 10000, medianViews: 5000 })).toMatchObject({ verdict: "pass", flags: ["Scored from views only, without likes or comments"] });
     expect(assessFromViews({ followers: 15600, medianViews: 130 }).verdict).toBe("review");
+  });
+});
+
+describe("networkDropped", () => {
+  const noDns = Object.assign(new Error("getaddrinfo ENOTFOUND graph.facebook.com"), { code: "ENOTFOUND" });
+
+  it("spots a dropped connection in a fetch or a database write", () => {
+    expect(networkDropped(new TypeError("fetch failed", { cause: noDns }))).toBe(true);
+    expect(networkDropped(new Error("Failed query: insert into \"activity\"", { cause: noDns }))).toBe(true);
+    expect(networkDropped(new DOMException("The operation was aborted due to timeout", "TimeoutError"))).toBe(true);
+    expect(networkDropped(new Error("Connection terminated unexpectedly"))).toBe(true);
+  });
+
+  it("leaves real errors alone", () => {
+    expect(networkDropped(new Error("Instagram Business Discovery failed for @x: Invalid parameter"))).toBe(false);
+    expect(networkDropped(new Error("Failed query", { cause: new Error('column "x" does not exist') }))).toBe(false);
+    expect(networkDropped("ENOTFOUND")).toBe(false);
   });
 });
